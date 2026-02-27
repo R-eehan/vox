@@ -2,17 +2,16 @@
 // ============================================================
 // Vox — Entry point for the macOS menu bar STT app.
 //
-// This file sets up a "menu bar extra" — an app that lives
-// entirely in the macOS menu bar (the row of icons in the
-// top-right of the screen, next to the clock).
+// This wires the AppController (which orchestrates the pipeline)
+// to the SwiftUI menu bar UI. The UI shows:
+//   - Current state (loading, idle, listening, processing)
+//   - Live transcription text
+//   - Error messages
+//   - Quit button
 //
-// Key SwiftUI concept: MenuBarExtra is a Scene type that
-// creates a menu bar icon. When clicked, it shows either a
-// simple menu (.menu style) or a custom SwiftUI view
-// (.window style). We use .window for richer UI later.
-//
-// LSUIElement = true (set in Info.plist) tells macOS to hide
-// this app from the Dock and App Switcher — it's menu-bar-only.
+// The menu bar icon changes based on state:
+//   🎙 mic.fill (idle) → 🔴 record.circle (listening) →
+//   ⏳ ellipsis.circle (processing)
 // ============================================================
 
 import SwiftUI
@@ -22,35 +21,96 @@ import SwiftUI
 @main
 struct VoxApp: App {
 
-    // The body property defines the app's scene hierarchy.
-    // A "scene" in SwiftUI is a top-level container (window, menu bar item, etc.)
+    // @StateObject creates the controller once and keeps it alive
+    // for the lifetime of the app. It's the SwiftUI equivalent of
+    // a singleton — but with automatic lifecycle management.
+    @StateObject private var controller = AppController()
+
     var body: some Scene {
-        // MenuBarExtra creates a persistent icon in the macOS menu bar.
-        // Parameters:
-        //   - "Vox": accessibility label for the menu bar item
-        //   - systemImage: SF Symbols icon name (mic.fill = microphone)
-        MenuBarExtra("Vox", systemImage: "mic.fill") {
-            // This closure defines what appears when the user clicks the icon.
-            VStack(spacing: 12) {
-                Text("Vox")
-                    .font(.headline)
-                Text("Speech-to-Text")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        MenuBarExtra {
+            // --- Menu Bar Panel Content ---
+            VStack(alignment: .leading, spacing: 12) {
+
+                // Status header
+                HStack {
+                    // State-dependent icon
+                    Image(systemName: iconForState(controller.state))
+                        .foregroundColor(colorForState(controller.state))
+                    Text(controller.state.rawValue)
+                        .font(.headline)
+                }
+
+                // Show current transcription text when available
+                if !controller.currentText.isEmpty {
+                    Text(controller.currentText)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .lineLimit(5)
+                        .frame(maxWidth: 280, alignment: .leading)
+                }
+
+                // Show error if present
+                if let error = controller.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
 
                 Divider()
+
+                // Hotkey hint
+                Text("⌘⇧V to start/stop dictation")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
 
                 // Quit button — essential for menu bar apps since there's
                 // no window close button or Dock icon to right-click.
                 Button("Quit Vox") {
+                    controller.teardown()
                     NSApplication.shared.terminate(nil)
                 }
                 .keyboardShortcut("q")
             }
             .padding()
+            .frame(width: 300)
+            .onAppear {
+                // Initialize the controller when the menu bar panel
+                // first appears. This triggers model download + load
+                // and registers the global hotkey.
+                controller.setup()
+            }
+        } label: {
+            // --- Menu Bar Icon ---
+            // This is what appears in the macOS menu bar.
+            // We change the icon based on the current state.
+            Image(systemName: iconForState(controller.state))
         }
-        // .window style renders the menu bar content as a floating panel
-        // (like a popover), allowing any SwiftUI view — not just menu items.
         .menuBarExtraStyle(.window)
+    }
+
+    // MARK: - UI Helpers
+
+    /// Map app state to an SF Symbols icon name
+    private func iconForState(_ state: VoxState) -> String {
+        switch state {
+        case .loading: return "arrow.down.circle"
+        case .idle: return "mic.fill"
+        case .listening: return "record.circle.fill"
+        case .processing: return "ellipsis.circle.fill"
+        case .inserting: return "doc.on.clipboard"
+        case .error: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    /// Map app state to a color for the icon
+    private func colorForState(_ state: VoxState) -> Color {
+        switch state {
+        case .loading: return .orange
+        case .idle: return .primary
+        case .listening: return .red
+        case .processing: return .orange
+        case .inserting: return .blue
+        case .error: return .red
+        }
     }
 }
