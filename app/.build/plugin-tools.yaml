@@ -1,0 +1,100 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "HotKey-arm64-apple-macosx26.0-debug.module": ["<HotKey-arm64-apple-macosx26.0-debug.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "Vox-arm64-apple-macosx26.0-debug.exe": ["<Vox-arm64-apple-macosx26.0-debug.exe>"]
+  "Vox-arm64-apple-macosx26.0-debug.module": ["<Vox-arm64-apple-macosx26.0-debug.module>"]
+  "main": ["<Vox-arm64-apple-macosx26.0-debug.exe>","<Vox-arm64-apple-macosx26.0-debug.module>"]
+  "test": ["<Vox-arm64-apple-macosx26.0-debug.exe>","<Vox-arm64-apple-macosx26.0-debug.module>"]
+default: "main"
+nodes:
+  "/Users/reehan/Desktop/vox/app/Sources/Vox/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox":
+    is-mutated: true
+commands:
+  "/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/HotKey.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/HotKeysController.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/Key.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/KeyCombo+System.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/KeyCombo.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/NSEventModifierFlags+HotKey.swift"]
+    outputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/sources"]
+    description: "Write auxiliary file /Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/sources"
+
+  "/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox-entitlement.plist":
+    tool: write-auxiliary-file
+    inputs: ["<entitlement-plist>","<com.apple.security.get-task-allow>"]
+    outputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox-entitlement.plist"]
+    description: "Write auxiliary file /Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox-entitlement.plist"
+
+  "/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/reehan/Desktop/vox/app/Sources/Vox/VoxApp.swift"]
+    outputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/sources"]
+    description: "Write auxiliary file /Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/sources"
+
+  "/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/HotKey.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/HotKeysController.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/Key.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/KeyCombo+System.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/KeyCombo.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/NSEventModifierFlags+HotKey.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/VoxApp.swift.o"]
+    outputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.product/Objects.LinkFileList"
+
+  "/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Library/Developer/CommandLineTools/usr/bin/swiftc"]
+    outputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+
+  "<HotKey-arm64-apple-macosx26.0-debug.module>":
+    tool: phony
+    inputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/HotKey.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/HotKeysController.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/Key.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/KeyCombo+System.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/KeyCombo.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/NSEventModifierFlags+HotKey.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/HotKey.swiftmodule"]
+    outputs: ["<HotKey-arm64-apple-macosx26.0-debug.module>"]
+
+  "<Vox-arm64-apple-macosx26.0-debug.exe>":
+    tool: phony
+    inputs: ["<Vox-arm64-apple-macosx26.0-debug.exe-CodeSigning>"]
+    outputs: ["<Vox-arm64-apple-macosx26.0-debug.exe>"]
+
+  "<Vox-arm64-apple-macosx26.0-debug.module>":
+    tool: phony
+    inputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/VoxApp.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/Vox.swiftmodule"]
+    outputs: ["<Vox-arm64-apple-macosx26.0-debug.module>"]
+
+  "C.HotKey-arm64-apple-macosx26.0-debug.module":
+    tool: shell
+    inputs: ["/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/HotKey.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/HotKeysController.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/Key.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/KeyCombo+System.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/KeyCombo.swift","/Users/reehan/Desktop/vox/app/.build/checkouts/HotKey/Sources/HotKey/NSEventModifierFlags+HotKey.swift","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/sources"]
+    outputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/HotKey.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/HotKeysController.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/Key.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/KeyCombo+System.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/KeyCombo.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/NSEventModifierFlags+HotKey.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/HotKey.swiftmodule"]
+    description: "Compiling Swift Module 'HotKey' (6 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","HotKey","-emit-dependencies","-emit-module","-emit-module-path","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/HotKey.swiftmodule","-output-file-map","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/output-file-map.json","-parse-as-library","-incremental","-c","@/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/sources","-I","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx10.13","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j10","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/include/HotKey-Swift.h","-swift-version","5","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-suppress-warnings"]
+
+  "C.Vox-arm64-apple-macosx26.0-debug.exe":
+    tool: shell
+    inputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/HotKey.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/HotKeysController.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/Key.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/KeyCombo+System.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/KeyCombo.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/HotKey.build/NSEventModifierFlags+HotKey.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/VoxApp.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.product/Objects.LinkFileList"]
+    outputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/Vox"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-L","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug","-o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox","-module-name","Vox","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-alias","-Xlinker","_Vox_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Library/Developer/CommandLineTools/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx14.0","-Xlinker","-add_ast_path","-Xlinker","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/HotKey.swiftmodule","-Xlinker","-add_ast_path","-Xlinker","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/Vox.swiftmodule","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g"]
+
+  "C.Vox-arm64-apple-macosx26.0-debug.exe-entitlements":
+    tool: shell
+    inputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox-entitlement.plist"]
+    outputs: ["<Vox-arm64-apple-macosx26.0-debug.exe-CodeSigning>"]
+    description: "Applying debug entitlements to ./.build/arm64-apple-macosx/debug/Vox"
+    args: ["codesign","--force","--sign","-","--entitlements","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox-entitlement.plist","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox"]
+
+  "C.Vox-arm64-apple-macosx26.0-debug.module":
+    tool: shell
+    inputs: ["/Users/reehan/Desktop/vox/app/Sources/Vox/VoxApp.swift","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/HotKey.swiftmodule","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/sources"]
+    outputs: ["/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/VoxApp.swift.o","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/Vox.swiftmodule"]
+    description: "Compiling Swift Module 'Vox' (1 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","Vox","-emit-dependencies","-emit-module","-emit-module-path","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules/Vox.swiftmodule","-output-file-map","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/output-file-map.json","-incremental","-c","@/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Vox.build/sources","-I","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j10","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/reehan/Desktop/vox/app/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","Vox_main","-parse-as-library","-swift-version","6","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","app"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/reehan/Desktop/vox/app/Sources/Vox/","/Users/reehan/Desktop/vox/app/Package.swift","/Users/reehan/Desktop/vox/app/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+
