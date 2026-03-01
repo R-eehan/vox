@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# Swift Package Manager
+.build/
+Packages/
+
+# WhisperKit models (downloaded at runtime)
+xcode/Vox/Models/
+
+# IDE
+*.swp
+*~

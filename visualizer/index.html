@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Exploring Speech-to-Text</title>
+<meta name="description" content="A 5-stage interactive pipeline explainer. From sound waves to text insertion in under 500 milliseconds."/>
+
+<!-- Fonts: Newsreader (editorial display) + DM Sans (body) + JetBrains Mono (technical) -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..800;1,6..72,300..800&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "primary": "#0D9488",
+        "accent": "#2DD4BF",
+      },
+      fontFamily: {
+        "display": ["Newsreader", "Georgia", "Times New Roman", "serif"],
+        "body": ["DM Sans", "system-ui", "-apple-system", "sans-serif"],
+        "mono": ["JetBrains Mono", "SF Mono", "Menlo", "monospace"],
+      },
+    },
+  },
+}
+</script>
+
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #a1a1aa33; border-radius: 3px; }
+  .dark ::-webkit-scrollbar-thumb { background: #52525b44; }
+
+  /* Stage activation */
+  .stage-card {
+    opacity: 0.4;
+    transform: translateY(16px);
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .stage-section.active .stage-card {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Viz fade-in */
+  .viz-panel {
+    opacity: 0;
+    transition: opacity 0.6s ease 0.2s;
+  }
+  .stage-section.active .viz-panel { opacity: 1; }
+
+  /* Token animation */
+  .token { opacity: 0; transition: opacity 0.25s ease, color 0.25s ease; }
+  .token.revealed { opacity: 1; }
+  .token.filler { color: #f87171; text-decoration: line-through; }
+
+  /* Cleanup reveal */
+  .cleanup-after { opacity: 0; transform: translateX(6px); transition: opacity 0.5s ease, transform 0.5s ease; }
+  .cleanup-after.revealed { opacity: 1; transform: translateX(0); }
+
+  /* Insertion step states */
+  .ins-step { opacity: 0.35; transition: all 0.3s ease; }
+  .ins-step.active { opacity: 1; }
+  .ins-step.done { opacity: 0.55; }
+
+  /* Cursor blink */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .blink { animation: blink 1s step-end infinite; }
+
+  /* Tracker active dot */
+  .tracker-btn.is-active { background: var(--tw-shadow-color, transparent); }
+
+  /* Progress bar */
+  #scroll-bar { transition: width 0.1s linear; }
+
+  /* Selection color */
+  ::selection { background: #2dd4bf33; }
+  .dark ::selection { background: #2dd4bf22; }
+</style>
+</head>
+
+<body class="bg-stone-50 dark:bg-[#0A0A0A] text-zinc-800 dark:text-[#E8E6E1] antialiased">
+
+<!-- ── HEADER ─────────────────────────────────────── -->
+<header class="sticky top-0 z-50 border-b border-zinc-200/80 dark:border-zinc-800/60 bg-stone-50/90 dark:bg-[#0A0A0A]/90 backdrop-blur-md">
+  <div id="scroll-bar" class="h-[2px] bg-primary dark:bg-accent" style="width:0%"></div>
+
+  <div class="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between">
+    <!-- Logo -->
+    <a href="#" class="flex items-center gap-2 group cursor-pointer">
+      <span class="material-symbols-outlined text-primary dark:text-accent text-xl">sound_detection_loud_sound</span>
+      <span class="font-display text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-[#E8E6E1]">Exploring Speech-to-Text</span>
+    </a>
+
+    <!-- Pipeline nav -->
+    <nav class="hidden md:flex items-center gap-0.5">
+      <button onclick="scrollTo('#stage-1')" data-stage="1" class="tracker-btn px-2 py-1 rounded text-[11px] font-mono font-medium text-zinc-400 dark:text-zinc-500 hover:text-primary dark:hover:text-accent transition-colors cursor-pointer">01</button>
+      <span class="text-zinc-300 dark:text-zinc-700 text-[10px]">/</span>
+      <button onclick="scrollTo('#stage-2')" data-stage="2" class="tracker-btn px-2 py-1 rounded text-[11px] font-mono font-medium text-zinc-400 dark:text-zinc-500 hover:text-primary dark:hover:text-accent transition-colors cursor-pointer">02</button>
+      <span class="text-zinc-300 dark:text-zinc-700 text-[10px]">/</span>
+      <button onclick="scrollTo('#stage-3')" data-stage="3" class="tracker-btn px-2 py-1 rounded text-[11px] font-mono font-medium text-zinc-400 dark:text-zinc-500 hover:text-primary dark:hover:text-accent transition-colors cursor-pointer">03</button>
+      <span class="text-zinc-300 dark:text-zinc-700 text-[10px]">/</span>
+      <button onclick="scrollTo('#stage-4')" data-stage="4" class="tracker-btn px-2 py-1 rounded text-[11px] font-mono font-medium text-zinc-400 dark:text-zinc-500 hover:text-primary dark:hover:text-accent transition-colors cursor-pointer">04</button>
+      <span class="text-zinc-300 dark:text-zinc-700 text-[10px]">/</span>
+      <button onclick="scrollTo('#stage-5')" data-stage="5" class="tracker-btn px-2 py-1 rounded text-[11px] font-mono font-medium text-zinc-400 dark:text-zinc-500 hover:text-primary dark:hover:text-accent transition-colors cursor-pointer">05</button>
+    </nav>
+
+    <!-- Theme toggle -->
+    <button id="theme-toggle" onclick="toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 dark:text-zinc-500 transition-colors cursor-pointer" aria-label="Toggle theme">
+      <span class="material-symbols-outlined text-[18px]" id="theme-icon">dark_mode</span>
+    </button>
+  </div>
+</header>
+
+<!-- ── INTRO ──────────────────────────────────────── -->
+<section class="max-w-4xl mx-auto px-5 pt-16 pb-12 md:pt-24 md:pb-16">
+  <p class="font-mono text-[11px] font-medium uppercase tracking-[0.15em] text-primary dark:text-accent mb-4">STT Pipeline Visualized</p>
+  <h1 class="font-display text-3xl sm:text-4xl md:text-[42px] font-semibold tracking-tight text-zinc-900 dark:text-[#F5F5F0] leading-[1.15] mb-5">
+    How does speech&#8209;to&#8209;text actually work under the hood?
+  </h1>
+  <p class="text-[16px] text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-xl">
+    Speech-to-text is five stages of signal processing, neural inference, and post-processing. All of it runs in under 500 milliseconds. Here's what each stage actually does:
+  </p>
+</section>
+
+<main class="max-w-4xl mx-auto px-5 pb-24 space-y-10 md:space-y-14">
+
+<!-- ── STAGE 1 : AUDIO CAPTURE ───────────────────── -->
+<section id="stage-1" class="stage-section" data-stage="1">
+  <div class="stage-card bg-white dark:bg-[#141414] border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+    <div class="flex flex-col lg:flex-row">
+      <!-- Label -->
+      <div class="lg:w-48 shrink-0 p-6 lg:p-8 flex lg:flex-col items-center lg:items-start gap-3 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800">
+        <span class="material-symbols-outlined text-primary dark:text-accent text-2xl">mic</span>
+        <div>
+          <p class="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-500">Stage 01</p>
+          <p class="text-sm font-semibold text-zinc-900 dark:text-[#E8E6E1]">Audio Capture</p>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="flex-1 p-6 lg:p-8">
+        <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-900 dark:text-[#F5F5F0] mb-3">From air to numbers</h2>
+
+        <p class="text-[15px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+          Sound starts as air pressure vibrations from your vocal cords. Your device's microphone converts those vibrations into electrical voltage. Sampling measures that voltage thousands of times per second(frequency), turning analog sound into a list of numbers. This is a mapping of your voice to an entire digital signal(numbers).
+        </p>
+
+        <blockquote class="font-display italic text-[15px] text-primary dark:text-accent/90 border-l-2 border-primary/25 dark:border-accent/25 pl-4 mb-5">
+          One second of speech at 16kHz mono is 64KB. Just 16,000 floating point numbers between &minus;1.0 and 1.0. That's the raw material the entire pipeline works with.
+        </blockquote>
+
+        <p class="text-[14px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-5">
+          The microphone on a Mac records at 48kHz. Much more information than what the speech recognition model needs. The model requires 16kHz, so we first have to resample via linear interpolation: blending the two nearest original values at evenly-spaced positions. The captured audio typically arrives in chunks of 4,096 samples every ~85ms through an <span class="font-mono text-[13px] text-zinc-600 dark:text-zinc-300">installTap()</span> callback. Think of it as a tap on the audio pipe, delivering data as it flows.
+        </p>
+
+        <!-- Specs -->
+        <div class="flex flex-wrap gap-2 mb-5">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">16,000 Hz</span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">4,096-sample chunks</span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">~85ms per delivery</span>
+        </div>
+
+        <!-- Viz: Waveform -->
+        <div class="viz-panel rounded-lg bg-[#111] dark:bg-[#0D0D0D] border border-zinc-200 dark:border-zinc-800 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-mono text-[10px] font-medium text-zinc-500 uppercase tracking-widest">Waveform</span>
+            <span class="font-mono text-[10px] text-zinc-600">16kHz Mono</span>
+          </div>
+          <canvas id="waveform-canvas" class="w-full rounded" height="72" style="height:72px;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STAGE 2 : VOICE ACTIVITY DETECTION ────────── -->
+<section id="stage-2" class="stage-section" data-stage="2">
+  <div class="stage-card bg-white dark:bg-[#141414] border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+    <div class="flex flex-col lg:flex-row">
+      <div class="lg:w-48 shrink-0 p-6 lg:p-8 flex lg:flex-col items-center lg:items-start gap-3 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800">
+        <span class="material-symbols-outlined text-primary dark:text-accent text-2xl">graphic_eq</span>
+        <div>
+          <p class="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-500">Stage 02</p>
+          <p class="text-sm font-semibold text-zinc-900 dark:text-[#E8E6E1]">Voice Detection</p>
+        </div>
+      </div>
+
+      <div class="flex-1 p-6 lg:p-8">
+        <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-900 dark:text-[#F5F5F0] mb-3">Filtering the silence</h2>
+
+        <p class="text-[15px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+          When are you actually talking? When should the microphone start/stop recording? That's the first engineering challenge. With local speech recognition models, voice activity detection(VAD) is classified as 30ms audio frames as speech or silence. Without it, the inference engine wastes cycles processing keyboard clicks, fan noise, and dead air.
+        </p>
+
+        <blockquote class="font-display italic text-[15px] text-primary dark:text-accent/90 border-l-2 border-primary/25 dark:border-accent/25 pl-4 mb-5">
+          A small neural network then outputs a probability score per frame. Above the threshold, it's speech. Below, it's silence. Only speech frames pass through to inference.
+        </blockquote>
+
+        <div class="flex flex-wrap gap-2 mb-5">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">30ms frames</span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">0.0–1.0 threshold</span>
+        </div>
+
+        <!-- Viz: VAD -->
+        <div class="viz-panel rounded-lg bg-[#111] dark:bg-[#0D0D0D] border border-zinc-200 dark:border-zinc-800 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-mono text-[10px] font-medium text-zinc-500 uppercase tracking-widest">Speech Detection</span>
+            <span class="font-mono text-[10px] text-zinc-600">Threshold: 0.5</span>
+          </div>
+          <!-- Probability -->
+          <div class="mb-3">
+            <div class="flex justify-between mb-1">
+              <span class="font-mono text-[10px] text-zinc-500">Speech probability</span>
+              <span id="vad-prob" class="font-mono text-[10px] text-emerald-400 font-semibold">0.00</span>
+            </div>
+            <div class="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div id="vad-prob-bar" class="h-full bg-emerald-400 rounded-full transition-all duration-150" style="width:0%"></div>
+            </div>
+          </div>
+          <!-- Segments -->
+          <div id="vad-segments" class="flex gap-px h-5 mb-1"></div>
+          <div class="flex justify-between text-[9px] font-mono text-zinc-600">
+            <span>Silence</span>
+            <span class="text-emerald-400">Speech</span>
+            <span>Silence</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STAGE 3 : MODEL INFERENCE ─────────────────── -->
+<section id="stage-3" class="stage-section" data-stage="3">
+  <div class="stage-card bg-white dark:bg-[#141414] border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+    <div class="flex flex-col lg:flex-row">
+      <div class="lg:w-48 shrink-0 p-6 lg:p-8 flex lg:flex-col items-center lg:items-start gap-3 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800">
+        <span class="material-symbols-outlined text-primary dark:text-accent text-2xl">psychology</span>
+        <div>
+          <p class="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-500">Stage 03</p>
+          <p class="text-sm font-semibold text-zinc-900 dark:text-[#E8E6E1]">Inference</p>
+        </div>
+      </div>
+
+      <div class="flex-1 p-6 lg:p-8">
+        <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-900 dark:text-[#F5F5F0] mb-3">A picture of sound, then words</h2>
+
+        <p class="text-[15px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+          First, the model converts raw audio into a <strong class="text-zinc-700 dark:text-zinc-300 font-medium">mel spectrogram</strong>. It's a heatmap where X is time, Y is frequency scaled to human hearing, and brightness is loudness. Like freezing a music equalizer display every few milliseconds and stacking the snapshots.
+        </p>
+
+        <blockquote class="font-display italic text-[15px] text-primary dark:text-accent/90 border-l-2 border-primary/25 dark:border-accent/25 pl-4 mb-4">
+          Your list of numbers just became a picture. Speech recognition is a computer vision problem!
+        </blockquote>
+
+        <p class="text-[14px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+          An <strong class="text-zinc-700 dark:text-zinc-300 font-medium">encoder</strong> (neural network) studies that picture and produces a compressed summary. Not text yet. Think of a court stenographer pressing shorthand keys, capturing phonetic structure rather than English words - "breathy onset, strong mid-vowel, liquid consonant". The summary captures what the sound means without committing to specific words.
+        </p>
+        <p class="text-[14px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-5">
+          Then a <strong class="text-zinc-700 dark:text-zinc-300 font-medium">decoder</strong> (small language model) generates text one token at a time. It uses attention to check which part of the audio corresponds to the next word. Like a translator who listens to the full speech, then translates sentence by sentence.
+        </p>
+
+        <div class="flex flex-wrap gap-2 mb-5">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">6.65% WER</span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">30s chunk limit</span>
+        </div>
+
+        <!-- Viz: Spectrogram + Tokens -->
+        <div class="viz-panel rounded-lg bg-[#111] dark:bg-[#0D0D0D] border border-zinc-200 dark:border-zinc-800 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-mono text-[10px] font-medium text-zinc-500 uppercase tracking-widest">Spectrogram &rarr; Tokens</span>
+            <span class="font-mono text-[10px] text-zinc-600">Encoder-Decoder</span>
+          </div>
+          <div id="spectrogram" class="grid gap-px mb-3" style="grid-template-columns:repeat(30,1fr);grid-template-rows:repeat(6,1fr);"></div>
+          <div class="border-t border-zinc-800 pt-2.5">
+            <span class="font-mono text-[10px] text-zinc-500 block mb-1.5">Token output</span>
+            <div id="token-stream" class="font-mono text-[13px] text-zinc-200 leading-relaxed min-h-[2.5em]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STAGE 4 : TEXT CLEANUP ────────────────────── -->
+<section id="stage-4" class="stage-section" data-stage="4">
+  <div class="stage-card bg-white dark:bg-[#141414] border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+    <div class="flex flex-col lg:flex-row">
+      <div class="lg:w-48 shrink-0 p-6 lg:p-8 flex lg:flex-col items-center lg:items-start gap-3 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800">
+        <span class="material-symbols-outlined text-primary dark:text-accent text-2xl">auto_fix_high</span>
+        <div>
+          <p class="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-500">Stage 04</p>
+          <p class="text-sm font-semibold text-zinc-900 dark:text-[#E8E6E1]">Text Cleanup</p>
+        </div>
+      </div>
+
+      <div class="flex-1 p-6 lg:p-8">
+        <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-900 dark:text-[#F5F5F0] mb-3">Cleaning up raw speech</h2>
+
+        <p class="text-[15px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+          Even a perfect transcription captures every filler word with perfect accuracy. "Um so I was like you know thinking about it" transcribed exactly as spoken reads terribly.
+        </p>
+
+        <blockquote class="font-display italic text-[15px] text-primary dark:text-accent/90 border-l-2 border-primary/25 dark:border-accent/25 pl-4 mb-5">
+          100% transcription accuracy doesn't mean 100% useful output. The fillers are noise, not signal.
+        </blockquote>
+
+        <p class="text-[14px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-5">
+          Post-processing fixes this. Filler words get removed ("um", "uh", "like"). Punctuation gets predicted. Capitalization gets fixed. Inverse text normalization turns "five dollars" into "$5.00" and "twenty second of may" into "May 22nd." Simple implementations use about 15 regex patterns at sub-millisecond speed. More sophisticated systems use a language model to rewrite the full output.
+        </p>
+
+        <div class="flex flex-wrap gap-2 mb-5">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">~15 filler patterns</span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">&lt;1ms regex</span>
+        </div>
+
+        <!-- Viz: Before/After -->
+        <div class="viz-panel rounded-lg bg-[#111] dark:bg-[#0D0D0D] border border-zinc-200 dark:border-zinc-800 p-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <span class="font-mono text-[10px] font-medium text-zinc-500 uppercase tracking-widest mb-1.5 block">Raw output</span>
+              <div class="p-3 rounded bg-zinc-900/50 border border-zinc-800 text-[13px] font-mono text-zinc-300 leading-relaxed">
+                <span class="text-red-400/80">So</span> <span class="text-red-400/80">um</span> I was thinking <span class="text-red-400/80">uh</span> that we should <span class="text-red-400/80">like</span> probably <span class="text-red-400/80">um</span> schedule a meeting for <span class="text-red-400/80">like</span> next Tuesday
+              </div>
+            </div>
+            <div>
+              <span class="font-mono text-[10px] font-medium text-zinc-500 uppercase tracking-widest mb-1.5 block">Cleaned</span>
+              <div id="cleanup-after" class="cleanup-after p-3 rounded bg-emerald-950/20 border border-emerald-800/20 text-[13px] font-mono text-zinc-200 leading-relaxed">
+                I was thinking that we should probably schedule a meeting for next Tuesday.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STAGE 5 : TEXT INSERTION ───────────────────── -->
+<section id="stage-5" class="stage-section" data-stage="5">
+  <div class="stage-card bg-white dark:bg-[#141414] border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+    <div class="flex flex-col lg:flex-row">
+      <div class="lg:w-48 shrink-0 p-6 lg:p-8 flex lg:flex-col items-center lg:items-start gap-3 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800">
+        <span class="material-symbols-outlined text-primary dark:text-accent text-2xl">keyboard_return</span>
+        <div>
+          <p class="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-400 dark:text-zinc-500">Stage 05</p>
+          <p class="text-sm font-semibold text-zinc-900 dark:text-[#E8E6E1]">Text Insertion</p>
+        </div>
+      </div>
+
+      <div class="flex-1 p-6 lg:p-8">
+        <h2 class="font-display text-xl font-semibold tracking-tight text-zinc-900 dark:text-[#F5F5F0] mb-3">The invisible UX</h2>
+
+        <p class="text-[15px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+          How does the transcribed text get from the STT app into your email, Slack message, or code editor? It's simple - it's literally a "Paste" action from your clipboard! On macOS, every keypress creates a <strong class="text-zinc-700 dark:text-zinc-300 font-medium">Core Graphics Event(CGEvent)</strong>: a digital record saying "this key was pressed." You can create fake CGEvents in code. They're indistinguishable from real keypresses. Puppet strings attached to the keyboard.
+        </p>
+
+        <blockquote class="font-display italic text-[15px] text-primary dark:text-accent/90 border-l-2 border-primary/25 dark:border-accent/25 pl-4 mb-4">
+          Save the clipboard. Write the transcription to it. Simulate &#8984;V. Restore the clipboard. It's a hack. It requires Accessibility permissions. And it works everywhere.
+        </blockquote>
+
+        <p class="text-[14px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-5">
+          Real &#8984;V is four physical actions: Command DOWN, V DOWN, V UP, Command UP. Skip any one and it breaks. This clipboard hijack is also why every dictation app (Wispr Flow, VoiceInk, SuperWhisper) distributes outside the Mac App Store. Sandboxing forbids CGEvent posting, Apple Events, and global hotkeys.
+        </p>
+
+        <div class="flex flex-wrap gap-2 mb-5">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">4 CGEvents</span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">&lt;50ms latency</span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-700/50 text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-400">Accessibility required</span>
+        </div>
+
+        <!-- Viz: Insertion steps + macOS mock -->
+        <div class="viz-panel rounded-lg bg-[#111] dark:bg-[#0D0D0D] border border-zinc-200 dark:border-zinc-800 p-4">
+          <!-- Steps -->
+          <div class="grid grid-cols-4 gap-1.5 mb-3">
+            <div id="ins-1" class="ins-step p-2 rounded bg-zinc-900/50 border border-zinc-800 text-center">
+              <span class="font-mono text-[13px] block text-zinc-400">1</span>
+              <span class="font-mono text-[9px] text-zinc-500 block">Save clipboard</span>
+            </div>
+            <div id="ins-2" class="ins-step p-2 rounded bg-zinc-900/50 border border-zinc-800 text-center">
+              <span class="font-mono text-[13px] block text-zinc-400">2</span>
+              <span class="font-mono text-[9px] text-zinc-500 block">Write text</span>
+            </div>
+            <div id="ins-3" class="ins-step p-2 rounded bg-zinc-900/50 border border-zinc-800 text-center">
+              <span class="font-mono text-[13px] block text-zinc-400">3</span>
+              <span class="font-mono text-[9px] text-zinc-500 block">Simulate &#8984;V</span>
+            </div>
+            <div id="ins-4" class="ins-step p-2 rounded bg-zinc-900/50 border border-zinc-800 text-center">
+              <span class="font-mono text-[13px] block text-zinc-400">4</span>
+              <span class="font-mono text-[9px] text-zinc-500 block">Restore</span>
+            </div>
+          </div>
+          <!-- macOS window mock -->
+          <div class="rounded overflow-hidden border border-zinc-800">
+            <div class="bg-zinc-800/80 px-3 py-1.5 flex items-center gap-2">
+              <div class="flex gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#FF5F57]"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-[#28C840]"></span>
+              </div>
+              <span class="font-mono text-[10px] text-zinc-500 mx-auto">Notes — Untitled</span>
+            </div>
+            <div class="bg-[#1A1A1A] p-3 min-h-[3.5em]">
+              <span id="ins-text" class="font-mono text-[13px] text-zinc-200"></span><span id="ins-cursor" class="blink text-accent hidden">|</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ── FOOTER ─────────────────────────────────────── -->
+<footer class="border-t border-zinc-200 dark:border-zinc-800 py-8 px-5">
+  <div class="max-w-4xl mx-auto flex items-center justify-between">
+    <span class="font-mono text-[10px] text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">2026</span>
+    <a href="https://github.com/reehan-ahmed" class="font-mono text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-primary dark:hover:text-accent transition-colors cursor-pointer">GitHub</a>
+  </div>
+</footer>
+
+<!-- ── JAVASCRIPT ─────────────────────────────────── -->
+<script>
+/* ── Theme ──────────────────────────────────────── */
+(function initTheme() {
+  const saved = localStorage.getItem('stt-theme');
+  if (saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme:dark)').matches)) {
+    document.documentElement.classList.add('dark');
+    document.getElementById('theme-icon').textContent = 'light_mode';
+  }
+})();
+
+function toggleTheme() {
+  const cl = document.documentElement.classList;
+  cl.toggle('dark');
+  const dark = cl.contains('dark');
+  localStorage.setItem('stt-theme', dark ? 'dark' : 'light');
+  document.getElementById('theme-icon').textContent = dark ? 'light_mode' : 'dark_mode';
+}
+
+/* ── Scroll nav helper ──────────────────────────── */
+function scrollTo(sel) {
+  const el = document.querySelector(sel);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Scroll progress ────────────────────────────── */
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100;
+  document.getElementById('scroll-bar').style.width = Math.min(pct, 100) + '%';
+}, { passive: true });
+
+/* ── Intersection Observer ──────────────────────── */
+const fired = {};
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    const s = e.target, n = s.dataset.stage;
+    if (e.isIntersecting && e.intersectionRatio >= 0.2) {
+      s.classList.add('active');
+      // Update tracker
+      document.querySelectorAll('.tracker-btn').forEach(b => {
+        b.classList.toggle('text-primary', b.dataset.stage === n);
+        b.classList.toggle('dark:text-accent', b.dataset.stage === n);
+        b.classList.toggle('font-bold', b.dataset.stage === n);
+      });
+      // Fire animation once
+      if (!fired[n]) { fired[n] = true; animate(+n); }
+    }
+  });
+}, { threshold: 0.2 });
+
+document.querySelectorAll('.stage-section').forEach(s => obs.observe(s));
+
+/* ── Animations ─────────────────────────────────── */
+function animate(n) {
+  if (n === 1) waveform();
+  if (n === 2) vad();
+  if (n === 3) specTokens();
+  if (n === 4) cleanup();
+  if (n === 5) insertion();
+}
+
+/* Stage 1: Waveform */
+function waveform() {
+  const c = document.getElementById('waveform-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  c.width = c.offsetWidth * 2; c.height = 144;
+  let t = 0;
+  (function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    const mid = c.height / 2;
+    ctx.strokeStyle = '#2DD4BF';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#2DD4BF';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    for (let x = 0; x < c.width; x++) {
+      const p = x / c.width;
+      const y = mid
+        + Math.sin(p * 14 + t * 0.04) * 22
+        + Math.sin(p * 30 + t * 0.07) * 8
+        + Math.sin(p * 6 + t * 0.025) * 12
+        + (Math.random() - 0.5) * 2;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    t++;
+    requestAnimationFrame(draw);
+  })();
+}
+
+/* Stage 2: VAD segments */
+function vad() {
+  const box = document.getElementById('vad-segments');
+  const probEl = document.getElementById('vad-prob');
+  const barEl = document.getElementById('vad-prob-bar');
+  if (!box) return;
+  const pat = [0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0];
+  let i = 0;
+  box.innerHTML = '';
+  (function step() {
+    if (i >= pat.length) return;
+    const sp = pat[i];
+    const d = document.createElement('div');
+    d.className = 'flex-1 rounded-sm';
+    d.style.background = sp ? '#34D399' : '#3F3F46';
+    d.style.height = sp ? '100%' : '35%';
+    d.style.alignSelf = sp ? 'stretch' : 'center';
+    box.appendChild(d);
+    const p = sp ? (.7 + Math.random() * .25) : (.08 + Math.random() * .18);
+    probEl.textContent = p.toFixed(2);
+    barEl.style.width = (p * 100) + '%';
+    i++;
+    setTimeout(step, 70);
+  })();
+}
+
+/* Stage 3: Spectrogram + token reveal */
+function specTokens() {
+  const grid = document.getElementById('spectrogram');
+  const ts = document.getElementById('token-stream');
+  if (!grid || !ts) return;
+  grid.innerHTML = '';
+  const cols = 30, rows = 6, cells = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const d = document.createElement('div');
+      d.className = 'rounded-sm';
+      d.style.height = '7px';
+      d.style.background = '#1E1E22';
+      grid.appendChild(d);
+      cells.push(d);
+    }
+  }
+  const words = "So um I was thinking uh that we should like probably um schedule a meeting for like next Tuesday".split(' ');
+  const fillers = new Set(['So','um','uh','like']);
+  ts.innerHTML = words.map((w, i) => `<span class="token${fillers.has(w)?' filler':''}" data-i="${i}">${w} </span>`).join('');
+  let col = 0;
+  (function fill() {
+    if (col >= cols) return;
+    for (let r = 0; r < rows; r++) {
+      const v = Math.random();
+      const cell = cells[r * cols + col];
+      const a = .15 + v * .7;
+      cell.style.background = v > .6
+        ? `rgba(45,212,191,${a})`
+        : v > .3
+          ? `rgba(45,212,191,${a*.5})`
+          : `rgba(45,212,191,${a*.2})`;
+    }
+    const ti = Math.floor((col / cols) * words.length);
+    const tok = ts.querySelector(`[data-i="${ti}"]`);
+    if (tok && !tok.classList.contains('revealed')) tok.classList.add('revealed');
+    col++;
+    setTimeout(fill, 110);
+  })();
+}
+
+/* Stage 4: Cleanup */
+function cleanup() {
+  const el = document.getElementById('cleanup-after');
+  if (el) setTimeout(() => el.classList.add('revealed'), 500);
+}
+
+/* Stage 5: Insertion — text appears instantly (clipboard paste) */
+function insertion() {
+  const text = "I was thinking that we should probably schedule a meeting for next Tuesday.";
+  const tEl = document.getElementById('ins-text');
+  const cur = document.getElementById('ins-cursor');
+  if (!tEl || !cur) return;
+  const steps = [1,2,3,4];
+  let si = 0;
+  function go() {
+    if (si >= steps.length) return;
+    const n = steps[si];
+    steps.forEach(s => {
+      const el = document.getElementById('ins-' + s);
+      el.className = 'ins-step p-2 rounded bg-zinc-900/50 border border-zinc-800 text-center';
+    });
+    for (let j = 0; j < si; j++) {
+      const el = document.getElementById('ins-' + steps[j]);
+      el.classList.add('done');
+      el.style.borderColor = '#34D39950';
+    }
+    const act = document.getElementById('ins-' + n);
+    act.classList.add('active');
+    act.style.borderColor = '#2DD4BF50';
+    if (n === 3) {
+      // Clipboard paste: text appears all at once, not streamed
+      cur.classList.remove('hidden');
+      tEl.textContent = text;
+      si++;
+      setTimeout(go, 500);
+      return;
+    }
+    si++;
+    setTimeout(go, 600);
+  }
+  go();
+}
+</script>
+</body>
+</html>

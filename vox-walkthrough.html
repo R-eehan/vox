@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vox — Code Walkthrough</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-surface: #161b22;
+    --bg-card: #1c2128;
+    --bg-code: #0d1117;
+    --border: #30363d;
+    --border-active: #58a6ff;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --text-bright: #f0f6fc;
+    --accent: #58a6ff;
+    --accent-dim: #1f3a5f;
+    --red: #f85149;
+    --orange: #d29922;
+    --green: #3fb950;
+    --purple: #bc8cff;
+    --pink: #f778ba;
+    --yellow: #e3b341;
+    --cyan: #39d2c0;
+    --syn-keyword: #ff7b72;
+    --syn-string: #a5d6ff;
+    --syn-comment: #8b949e;
+    --syn-type: #79c0ff;
+    --syn-func: #d2a8ff;
+    --syn-number: #79c0ff;
+    --syn-property: #ffa657;
+    --syn-operator: #c9d1d9;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 280px; min-width: 280px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
+  .sidebar-header h1 { font-size: 18px; font-weight: 700; color: var(--text-bright); letter-spacing: -0.3px; margin-bottom: 4px; }
+  .sidebar-header p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .nav-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .nav-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    transition: all 0.15s ease; margin-bottom: 2px; position: relative;
+  }
+  .nav-item:hover { background: rgba(88,166,255,0.06); }
+  .nav-item.active { background: var(--accent-dim); }
+  .nav-item.active .nav-num { background: var(--accent); color: var(--bg); }
+  .nav-item.visited .nav-num { background: var(--green); color: var(--bg); }
+  .nav-num {
+    width: 24px; height: 24px; min-width: 24px; border-radius: 50%;
+    background: var(--border); color: var(--text-muted);
+    font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px; transition: all 0.15s ease;
+  }
+  .nav-label { flex: 1; }
+  .nav-label .title { font-size: 13px; font-weight: 600; color: var(--text-bright); line-height: 1.3; }
+  .nav-label .file { font-size: 11px; font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace; color: var(--text-muted); margin-top: 2px; }
+  .nav-item:not(:last-child)::after {
+    content: ''; position: absolute; left: 23px; top: 36px;
+    width: 2px; height: calc(100% - 16px); background: var(--border);
+  }
+  .nav-item.visited:not(:last-child)::after { background: var(--green); opacity: 0.4; }
+  .sidebar-footer {
+    padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px;
+  }
+  .sidebar-footer button {
+    flex: 1; padding: 8px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .sidebar-footer button:hover { border-color: var(--accent); color: var(--accent); }
+  .sidebar-footer button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── Main ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Pipeline bar */
+  .pipeline-bar {
+    background: var(--bg-surface); border-bottom: 1px solid var(--border);
+    padding: 12px 24px; overflow-x: auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .pipeline { display: flex; align-items: center; gap: 0; min-width: max-content; }
+  .pipeline-step { display: flex; align-items: center; gap: 0; cursor: pointer; }
+  .pipeline-node {
+    padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    white-space: nowrap; transition: all 0.15s; border: 1px solid transparent;
+  }
+  .pipeline-node.idle { background: var(--bg-card); color: var(--text-muted); }
+  .pipeline-node.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+  .pipeline-node.visited { background: rgba(63,185,80,0.1); color: var(--green); }
+  .pipeline-arrow { color: var(--text-muted); font-size: 14px; margin: 0 6px; opacity: 0.5; }
+  .pipeline-arrow.active { color: var(--accent); opacity: 1; }
+  .pipeline-arrow.visited { color: var(--green); opacity: 0.6; }
+
+  /* Concept toggle */
+  .toggle-group { display: flex; gap: 2px; background: var(--bg-card); border-radius: 6px; padding: 2px; border: 1px solid var(--border); flex-shrink: 0; }
+  .toggle-btn {
+    padding: 5px 12px; border-radius: 5px; font-size: 11px; font-weight: 600;
+    border: none; cursor: pointer; transition: all 0.15s;
+    background: transparent; color: var(--text-muted);
+  }
+  .toggle-btn.active { background: var(--accent-dim); color: var(--accent); }
+  .toggle-btn:hover:not(.active) { color: var(--text); }
+
+  /* Content area */
+  .content { flex: 1; overflow-y: auto; padding: 32px 40px 80px; scroll-behavior: smooth; }
+  .step-content { max-width: 800px; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .step-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+  }
+  .step-badge .snum { background: var(--accent); color: var(--bg); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+  .step-title { font-size: 28px; font-weight: 700; color: var(--text-bright); letter-spacing: -0.5px; margin-bottom: 6px; }
+  .step-file {
+    font-size: 14px; font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace;
+    color: var(--accent); margin-bottom: 24px; display: inline-block;
+    padding: 2px 8px; background: var(--accent-dim); border-radius: 4px;
+  }
+  .step-desc { font-size: 15px; line-height: 1.7; color: var(--text); margin-bottom: 24px; }
+  .step-desc strong { color: var(--text-bright); }
+
+  /* Code blocks */
+  .code-block { background: var(--bg-code); border: 1px solid var(--border); border-radius: 8px; margin: 16px 0 24px; overflow: hidden; }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px; background: var(--bg-surface); border-bottom: 1px solid var(--border);
+    font-size: 12px; font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace; color: var(--text-muted);
+  }
+  .code-header .lines { font-size: 11px; }
+  pre {
+    padding: 16px; overflow-x: auto;
+    font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace;
+    font-size: 13px; line-height: 1.6; tab-size: 4;
+  }
+  .kw { color: var(--syn-keyword); } .str { color: var(--syn-string); }
+  .cmt { color: var(--syn-comment); font-style: italic; } .ty { color: var(--syn-type); }
+  .fn { color: var(--syn-func); } .num { color: var(--syn-number); }
+  .prop { color: var(--syn-property); } .op { color: var(--syn-operator); }
+
+  /* Callout boxes */
+  .callout { border-radius: 8px; padding: 16px 20px; margin: 16px 0 24px; border-left: 3px solid; font-size: 14px; line-height: 1.6; }
+  .callout-title { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .callout.bug { background: rgba(248,81,73,0.08); border-color: var(--red); }
+  .callout.bug .callout-title { color: var(--red); }
+  .callout.decision { background: rgba(88,166,255,0.08); border-color: var(--accent); }
+  .callout.decision .callout-title { color: var(--accent); }
+  .callout.insight { background: rgba(188,140,255,0.08); border-color: var(--purple); }
+  .callout.insight .callout-title { color: var(--purple); }
+  .callout.tip { background: rgba(63,185,80,0.08); border-color: var(--green); }
+  .callout.tip .callout-title { color: var(--green); }
+
+  /* Concept explainer — distinct visual for ELI5 sections */
+  .concept {
+    background: rgba(57,210,192,0.06); border: 1px solid rgba(57,210,192,0.2);
+    border-radius: 10px; padding: 20px 24px; margin: 20px 0 28px;
+    position: relative;
+  }
+  .concept::before {
+    content: 'CONCEPT'; position: absolute; top: -9px; left: 16px;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    color: var(--cyan); background: var(--bg); padding: 0 8px;
+  }
+  .concept h4 { color: var(--cyan); font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .concept p { font-size: 14px; line-height: 1.7; color: var(--text); margin-bottom: 10px; }
+  .concept p:last-child { margin-bottom: 0; }
+  .concept strong { color: var(--text-bright); }
+  .concept code { font-size: 12px; }
+
+  /* Diagram blocks */
+  .diagram {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 20px; margin: 16px 0 24px; overflow-x: auto;
+    font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace;
+    font-size: 13px; line-height: 1.5; color: var(--text-muted); white-space: pre;
+  }
+  .diagram .hl { color: var(--accent); font-weight: 600; }
+  .diagram .g { color: var(--green); } .diagram .r { color: var(--red); }
+  .diagram .o { color: var(--orange); } .diagram .p { color: var(--purple); }
+  .diagram .c { color: var(--cyan); }
+
+  code {
+    font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace;
+    font-size: 13px; background: var(--bg-card); padding: 2px 6px;
+    border-radius: 4px; color: var(--syn-property);
+  }
+  .kv-grid {
+    display: grid; grid-template-columns: 140px 1fr; gap: 6px 16px;
+    font-size: 13px; margin: 12px 0 24px; padding: 12px 16px;
+    background: var(--bg-card); border-radius: 8px;
+  }
+  .kv-grid dt { color: var(--text-muted); font-weight: 500; }
+  .kv-grid dd { color: var(--text); font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace; font-size: 12px; }
+
+  .next-step {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 32px;
+    padding: 10px 20px; background: var(--accent-dim); border: 1px solid var(--accent);
+    border-radius: 8px; color: var(--accent); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; text-decoration: none;
+  }
+  .next-step:hover { background: rgba(88,166,255,0.2); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 220px; min-width: 220px; }
+    .content { padding: 24px 20px 80px; }
+    .step-title { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <h1>Vox Walkthrough</h1>
+    <p>How speech-to-text actually works, explained through building a macOS dictation app from scratch.</p>
+  </div>
+  <div class="nav-list" id="navList"></div>
+  <div class="sidebar-footer">
+    <button id="prevBtn" onclick="prevStep()" disabled>&larr; Prev</button>
+    <button id="nextBtn" onclick="nextStep()">Next &rarr;</button>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="pipeline-bar">
+    <div class="pipeline" id="pipelineBar"></div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="toggleBoth" onclick="setMode('both')">All</button>
+      <button class="toggle-btn" id="toggleConcepts" onclick="setMode('concepts')">Concepts</button>
+      <button class="toggle-btn" id="toggleCode" onclick="setMode('code')">Code</button>
+    </div>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+let currentStep = 0;
+const visited = new Set([0]);
+let viewMode = 'both'; // 'both', 'concepts', 'code'
+
+function c(html) { return viewMode !== 'code' ? html : ''; }   // concept content
+function d(html) { return viewMode !== 'concepts' ? html : ''; } // code/detail content
+
+const steps = [
+  {
+    title: "App Launch",
+    file: "VoxApp.swift",
+    fileLines: "1-104",
+    pipelineLabel: "Launch",
+    content: () => `
+      ${c(`
+      <div class="concept">
+        <h4>What happens when you double-click an app?</h4>
+        <p>macOS finds the entry point (the <code>@main</code> struct), creates it, and asks it: "what does your UI look like?" For Vox, the answer is: "I'm a menu bar icon with a little dropdown panel." There's no window, no Dock icon — just a small icon in the top-right of your screen, like Bartender or the Wi-Fi icon.</p>
+        <p>The single most important thing that happens at launch is that the <strong>brain of the app</strong> (<code>AppController</code>) is created immediately. Not when you click the icon. Not when you press the hotkey. The moment the app starts. This is critical because the brain needs time to download/load a large AI model before it can do anything useful.</p>
+      </div>
+      `)}
+
+      ${d(`
+      <div class="step-desc">
+        <code>VoxApp.swift</code> is marked with <code>@main</code> — the entry point. Line 28 is the key:
+        <code>@StateObject private var controller = AppController()</code> creates the orchestrator immediately at launch.
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span>VoxApp.swift</span><span class="lines">Lines 23-29</span></div>
+        <pre><span class="kw">@main</span>
+<span class="kw">struct</span> <span class="ty">VoxApp</span>: <span class="ty">App</span> {
+    <span class="cmt">// Created once at launch, lives for the app's lifetime.</span>
+    <span class="cmt">// AppController.init() starts model loading immediately.</span>
+    <span class="kw">@StateObject private var</span> controller = <span class="fn">AppController</span>()
+</pre>
+      </div>
+
+      <div class="step-desc">
+        The UI is a <code>MenuBarExtra</code> — SwiftUI's built-in menu bar component.
+        It shows the current state, the last transcription, a hotkey hint, and a Quit button.
+        The icon and color change based on app state.
+      </div>
+
+      <div class="callout bug">
+        <div class="callout-title">What Went Wrong in v1</div>
+        The original code triggered setup from <code>.onAppear</code> on the MenuBarExtra panel.
+        But <code>.onAppear</code> only fires when the user <strong>clicks the menu bar icon</strong> —
+        not at app launch. So the model didn't load until the first click. Pressing the hotkey before that did nothing.
+        <br><br><strong>Fix:</strong> All initialization moved to <code>AppController.init()</code>. No <code>.onAppear</code> needed.
+      </div>
+
+      <div class="callout decision">
+        <div class="callout-title">Architecture Decision</div>
+        <code>LSUIElement = true</code> in Info.plist hides Vox from the Dock and Cmd+Tab.
+        Standard for menu-bar-only apps. The app lives entirely in the menu bar.
+      </div>
+      `)}
+
+      <dl class="kv-grid">
+        <dt>Entry point</dt><dd>@main struct VoxApp: App</dd>
+        <dt>UI type</dt><dd>MenuBarExtra (menu bar icon)</dd>
+        <dt>Dock visible</dt><dd>No (LSUIElement = true)</dd>
+        <dt>Init timing</dt><dd>At launch, not on user interaction</dd>
+      </dl>
+    `
+  },
+  {
+    title: "Initialization",
+    file: "AppController.swift",
+    fileLines: "1-116",
+    pipelineLabel: "Init",
+    content: () => `
+      ${c(`
+      <div class="concept">
+        <h4>The app's brain wakes up and does three things</h4>
+        <p>Think of launching Vox like opening a restaurant. Before the first customer arrives, you need to:</p>
+        <p><strong>1. Install the doorbell</strong> — register the hotkey (Option+Space) so the app can hear when you want to start dictating, even while you're in a completely different app.</p>
+        <p><strong>2. Check the kitchen equipment</strong> — request microphone permission. On macOS, apps must explicitly ask to use the microphone. Without this, the audio engine starts but captures almost nothing.</p>
+        <p><strong>3. Hire the chef</strong> — download and load the AI model (~1-2 GB). This is the slowest step (10-120 seconds). It happens in the background so the app doesn't freeze.</p>
+        <p>All three happen <strong>automatically at launch</strong> — no user interaction required. By the time you press the hotkey, the restaurant is open and ready.</p>
+      </div>
+      `)}
+
+      ${d(`
+      <div class="step-desc">
+        <code>AppController.init()</code> runs three things in sequence:
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span>AppController.swift</span><span class="lines">Lines 82-116</span></div>
+        <pre><span class="kw">init</span>() {
+    <span class="cmt">// 1. Wire hotkey → start/stop dictation</span>
+    hotkeyManager.onToggle = { [<span class="kw">weak</span> <span class="kw">self</span>] isActive <span class="kw">in</span>
+        <span class="ty">Task</span> { <span class="kw">@MainActor in</span>
+            <span class="kw">if</span> isActive { <span class="kw">await self</span>?.<span class="fn">startDictation</span>() }
+            <span class="kw">else</span> { <span class="kw">await self</span>?.<span class="fn">stopDictation</span>() }
+        }
+    }
+    hotkeyManager.<span class="fn">register</span>()
+
+    <span class="cmt">// 2. Pipe transcriber text → UI</span>
+    transcriber.<span class="prop">$currentText</span>
+        .<span class="fn">receive</span>(on: <span class="ty">DispatchQueue</span>.main)
+        .<span class="fn">assign</span>(to: &<span class="prop">$currentText</span>)
+
+    <span class="cmt">// 3. Request mic permission + load model (async, non-blocking)</span>
+    <span class="ty">Task</span> {
+        <span class="kw">await</span> <span class="fn">requestMicrophonePermission</span>()
+        <span class="kw">await</span> <span class="fn">loadModel</span>()
+    }
+}</pre>
+      </div>
+
+      <div class="callout bug">
+        <div class="callout-title">What Went Wrong in v1</div>
+        Microphone permission was never explicitly requested. <code>NSMicrophoneUsageDescription</code> in Info.plist
+        only defines the dialog <em>message</em>, not <em>when</em> it appears. Without calling
+        <code>AVCaptureDevice.requestAccess(for: .audio)</code>, the audio engine starts but delivers
+        ~1600 samples (0.1 seconds) instead of the full recording. CoreAudio error -10877.
+      </div>
+      `)}
+
+      <div class="diagram"><span class="hl">Initialization Sequence</span>
+
+  1. <span class="g">Register hotkey</span>        ← ⌥Space ready instantly
+  2. <span class="g">Wire text pipeline</span>     ← Combine: transcriber → UI
+  3. <span class="o">Request mic permission</span>  ← async, shows dialog on first launch
+  4. <span class="o">Load AI model</span>           ← async, 10-120 seconds</div>
+    `
+  },
+  {
+    title: "Waiting for Input",
+    file: "HotkeyManager.swift",
+    fileLines: "1-62",
+    pipelineLabel: "Hotkey",
+    content: () => `
+      ${c(`
+      <div class="concept">
+        <h4>How does the app hear you from inside any app?</h4>
+        <p>When you're typing in Gmail or Slack, Vox is in the background. How does pressing Option+Space reach Vox instead of the foreground app?</p>
+        <p>macOS has a system called <strong>global hotkeys</strong> — a way for background apps to claim a key combination system-wide. When Vox registers Option+Space, macOS makes a deal: "Whenever this combo is pressed, I'll send it to Vox and <strong>swallow it</strong> — it won't reach the foreground app." This is why pressing Option+Space doesn't also type a space in your text field.</p>
+        <p>The underlying API is <strong>Carbon</strong> — Apple's legacy C framework from before macOS X. It's been deprecated since 2012, but it's still the <em>only</em> way to register a swallowing global hotkey. No modern replacement exists. Every app that does this (Raycast, Alfred, Wispr Flow) uses the same Carbon API under the hood.</p>
+      </div>
+      `)}
+
+      <div class="step-desc">
+        The toggle pattern is simple: first press = start, second press = stop.
+      </div>
+
+      ${d(`
+      <div class="code-block">
+        <div class="code-header"><span>HotkeyManager.swift</span><span class="lines">Lines 30-62</span></div>
+        <pre><span class="kw">@MainActor</span>
+<span class="kw">class</span> <span class="ty">HotkeyManager</span>: <span class="ty">ObservableObject</span> {
+    <span class="kw">private var</span> hotKey: <span class="ty">HotKey</span>?
+    <span class="kw">var</span> onToggle: ((<span class="ty">Bool</span>) -> <span class="ty">Void</span>)?
+    <span class="kw">@Published var</span> isActive: <span class="ty">Bool</span> = <span class="kw">false</span>
+
+    <span class="kw">func</span> <span class="fn">register</span>() {
+        hotKey = <span class="ty">HotKey</span>(key: .space, modifiers: [.option])
+        hotKey?.<span class="prop">keyDownHandler</span> = { [<span class="kw">weak self</span>] <span class="kw">in</span>
+            <span class="kw">self</span>?.isActive.<span class="fn">toggle</span>()
+            <span class="kw">self</span>?.<span class="fn">onToggle</span>?(<span class="kw">self</span>!.isActive)
+        }
+    }
+}</pre>
+      </div>
+      `)}
+
+      <div class="diagram"><span class="hl">Toggle Pattern</span>
+
+  Press ⌥Space  →  isActive = <span class="g">true</span>   →  <span class="g">startDictation()</span>   →  mic on
+       ... you speak ...
+  Press ⌥Space  →  isActive = <span class="r">false</span>  →  <span class="r">stopDictation()</span>    →  process + insert</div>
+
+      ${c(`
+      <div class="callout insight">
+        <div class="callout-title">Clean Separation</div>
+        <code>HotkeyManager</code> knows nothing about audio, transcription, or text insertion.
+        It just flips a boolean and calls a callback. You could swap the activation method
+        (menu item, Siri Shortcut, Stream Deck button) without touching any other code.
+      </div>
+      `)}
+    `
+  },
+  {
+    title: "Audio Capture",
+    file: "AudioCapture.swift",
+    fileLines: "1-182",
+    pipelineLabel: "Capture",
+    content: () => `
+      ${c(`
+      <div class="concept">
+        <h4>How does sound become numbers a computer can understand?</h4>
+        <p>When you speak, your vocal cords push air molecules back and forth — a <strong>sound wave</strong>. Your Mac's microphone has a tiny membrane that vibrates with these waves and converts them to <strong>electrical voltage</strong>. Still analog, still smooth.</p>
+        <p>A computer can't store smooth waves — only numbers. So it <strong>samples</strong> the wave: measures the voltage thousands of times per second and writes down each measurement. Like standing on the shore with a ruler, measuring the ocean wave height every fraction of a second.</p>
+        <p><strong>48,000 Hz</strong> = your Mac measures 48,000 times per second (extremely detailed).<br>
+        <strong>16,000 Hz</strong> = what the AI model needs (perfectly adequate for speech — human speech only has meaningful content up to ~8kHz).</p>
+        <p>The extra detail from 48kHz doesn't help for speech. It's like a 4K camera filming a text document — 1080p would capture every word just fine.</p>
+      </div>
+
+      <div class="concept">
+        <h4>Resampling: 48,000 → 16,000 samples per second</h4>
+        <p>We can't just throw away every 2-of-3 numbers (that creates distortion). Instead, we use <strong>linear interpolation</strong> — for each new position, find the two nearest original values and blend them.</p>
+        <p>Imagine a fence with 48 posts. You need a new fence with only 16 posts across the same distance. For each new post position, you look at the two nearest original posts and estimate: "I'm 40% of the way between post 7 and post 8, so my height should be 60% of post 7's height plus 40% of post 8's height."</p>
+        <p>That blending is the math in the code: <code>s1 + frac * (s2 - s1)</code>. It works because speech changes smoothly — no sudden jumps between adjacent samples.</p>
+      </div>
+
+      <div class="concept">
+        <h4>Audio arrives in chunks, not all at once</h4>
+        <p>Imagine saying <strong>"Hello"</strong> (0.5 seconds). The audio system doesn't hand you all 24,000 numbers at once. It delivers them in <strong>chunks of 4,096 numbers every ~85 milliseconds</strong> — like a delivery truck making 6 trips for your half-second word.</p>
+        <p>The <strong>tap</strong> is the code that runs on each delivery. <code>installTap</code> says: "Every time you have 4,096 numbers ready, call my function." That function resamples the chunk (48kHz → 16kHz) and pours it into a <strong>collection jar</strong> (the buffer).</p>
+        <p>When recording stops, <code>stop()</code> drains the jar — all accumulated samples as one list, ready for the AI.</p>
+        <p><strong>Why "thread-safe"?</strong> Two workers touch the jar: the audio system (pouring in chunks) and your main app (draining when you press stop). The <code>NSLock</code> prevents them from colliding — like a lock on a shared fridge at work.</p>
+      </div>
+
+      <div class="concept">
+        <h4>Why pre-allocate the scratch pad?</h4>
+        <p>The tap callback runs on a <strong>real-time audio thread</strong> with an 85ms deadline. If processing takes longer than 85ms, the next delivery arrives and audio is <strong>dropped</strong>.</p>
+        <p>Creating new memory (<code>Array()</code>) seems instant but isn't — the OS might need to find free space, shuffle things around, or ask the kernel for more pages. This takes <strong>unpredictable time</strong>.</p>
+        <p>So we create the scratch pad ONCE before recording starts, and reuse it for every delivery. Like a kitchen whiteboard: set up before the restaurant opens, wiped and reused per order, removed when it closes. You don't buy a new whiteboard for every order.</p>
+      </div>
+      `)}
+
+      <div class="diagram"><span class="hl">Audio Pipeline — "Hello" (0.5 seconds)</span>
+
+  <span class="p">Your mouth</span>: "Hello" → air pressure waves
+       │
+  <span class="p">Mac microphone</span>: vibration → electrical voltage
+       │
+  <span class="o">AVAudioEngine</span>: samples 48,000×/sec → 24,000 numbers
+       │
+  <span class="c">Tap callback</span> (runs every ~85ms, 6 deliveries for "Hello"):
+  │   Delivery 1: 4096 nums → resample → ~1365 nums → pour into jar
+  │   Delivery 2: 4096 nums → resample → ~1365 nums → pour into jar
+  │   ...
+  │   Delivery 6: remaining → resample → pour into jar
+       │
+  <span class="g">audioCapture.stop()</span> → drain jar → ~8,000 numbers at 16kHz
+       │
+  Ready for WhisperKit ✓</div>
+
+      ${d(`
+      <div class="code-block">
+        <div class="code-header"><span>AudioCapture.swift</span><span class="lines">Lines 29-52 — Thread-safe buffer</span></div>
+        <pre><span class="kw">final class</span> <span class="ty">AudioSampleBuffer</span>: <span class="kw">@unchecked</span> <span class="ty">Sendable</span> {
+    <span class="kw">private let</span> lock = <span class="ty">NSLock</span>()
+    <span class="kw">private var</span> samples: [<span class="ty">Float</span>] = []
+
+    <span class="kw">func</span> <span class="fn">append</span>(_ pointer: <span class="ty">UnsafeBufferPointer</span>&lt;<span class="ty">Float</span>&gt;) {
+        lock.<span class="fn">lock</span>()
+        samples.<span class="fn">append</span>(contentsOf: pointer)
+        lock.<span class="fn">unlock</span>()
+    }
+
+    <span class="kw">func</span> <span class="fn">drain</span>() -> [<span class="ty">Float</span>] {
+        lock.<span class="fn">lock</span>()
+        <span class="kw">let</span> result = samples
+        samples = []
+        lock.<span class="fn">unlock</span>()
+        <span class="kw">return</span> result
+    }
+}</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span>AudioCapture.swift</span><span class="lines">Lines 106-143 — Tap + linear interpolation</span></div>
+        <pre>inputNode.<span class="fn">installTap</span>(onBus: <span class="num">0</span>, bufferSize: <span class="num">4096</span>, format: tapFormat) { pcmBuffer, _ <span class="kw">in</span>
+    <span class="kw">guard let</span> channelData = pcmBuffer.<span class="prop">floatChannelData</span> <span class="kw">else</span> { <span class="kw">return</span> }
+    <span class="kw">let</span> frameCount = <span class="ty">Int</span>(pcmBuffer.<span class="prop">frameLength</span>)
+    <span class="kw">let</span> outputFrameCount = <span class="ty">Int</span>(<span class="ty">Double</span>(frameCount) * ratio)
+
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="num">0</span>..&lt;outputFrameCount {
+        <span class="kw">let</span> inputIndex = <span class="ty">Double</span>(i) / ratio
+        <span class="kw">let</span> idx1 = <span class="fn">min</span>(<span class="ty">Int</span>(inputIndex), frameCount - <span class="num">1</span>)
+        <span class="kw">let</span> idx2 = <span class="fn">min</span>(idx1 + <span class="num">1</span>, frameCount - <span class="num">1</span>)
+        <span class="kw">let</span> frac = <span class="ty">Float</span>(inputIndex - <span class="ty">Double</span>(idx1))
+
+        <span class="kw">var</span> sample: <span class="ty">Float</span> = <span class="num">0</span>
+        <span class="kw">for</span> ch <span class="kw">in</span> <span class="num">0</span>..&lt;channelCount {
+            <span class="kw">let</span> s1 = channelData[ch][idx1]
+            <span class="kw">let</span> s2 = channelData[ch][idx2]
+            sample += s1 + frac * (s2 - s1)   <span class="cmt">// blend neighbors</span>
+        }
+        convBuf[i] = sample / <span class="ty">Float</span>(channelCount)  <span class="cmt">// mono mixdown</span>
+    }
+    buffer.<span class="fn">append</span>(<span class="ty">UnsafeBufferPointer</span>(start: convBuf, count: outputFrameCount))
+}</pre>
+      </div>
+
+      <div class="callout bug">
+        <div class="callout-title">What Went Wrong in v1</div>
+        <strong>Two compounding bugs:</strong><br>
+        1. Used <code>AVAudioConverter</code> inside the tap callback — allocates memory on the real-time audio thread.
+        The OS dropped most buffers, resulting in ~0.1 seconds of audio captured.<br>
+        2. Constructed a hybrid tap format mixing input/output properties. The tap delivers in <code>outputFormat</code> — the mismatch caused silent errors.
+      </div>
+
+      <div class="callout bug">
+        <div class="callout-title">Swift 6 Concurrency Crash</div>
+        This file is intentionally <strong>NOT</strong> <code>@MainActor</code>. If it were, the tap closure would inherit
+        main-actor isolation, and Swift 6's runtime enforcement would crash (EXC_BREAKPOINT) when the audio thread calls it.
+        It uses <code>NSLock</code> for thread safety instead of actors.
+      </div>
+      `)}
+
+      <dl class="kv-grid">
+        <dt>Hardware rate</dt><dd>48,000 Hz (Mac microphone)</dd>
+        <dt>Target rate</dt><dd>16,000 Hz (WhisperKit)</dd>
+        <dt>Resampling</dt><dd>Linear interpolation</dd>
+        <dt>Delivery size</dt><dd>4,096 frames (~85ms)</dd>
+        <dt>Thread safety</dt><dd>NSLock (not actors)</dd>
+        <dt>5s recording</dt><dd>~80,000 samples at 16kHz</dd>
+      </dl>
+    `
+  },
+  {
+    title: "Transcription",
+    file: "Transcriber.swift",
+    fileLines: "1-154",
+    pipelineLabel: "Transcribe",
+    content: () => `
+      ${c(`
+      <div class="concept">
+        <h4>How does a list of numbers become the word "Hello"?</h4>
+        <p>We have ~8,000 numbers representing 0.5 seconds of you saying "Hello." This is the core miracle of speech-to-text, and it happens in three stages:</p>
+        <p><strong>Stage 1 — Numbers become a "picture of sound"</strong><br>
+        The raw numbers represent wave height over time. But speech is about <em>which frequencies (pitches) are present at each moment</em>. "H" is hissy and high-frequency. "ello" has lower-frequency vocal cord vibrations. The model converts the numbers into a <strong>heatmap</strong> called a mel spectrogram — X-axis is time, Y-axis is frequency, brightness is loudness. Think of a music equalizer display frozen every few milliseconds and stacked side by side. Your list of numbers just became a <strong>picture</strong>.</p>
+        <p><strong>Stage 2 — An "encoder" reads the picture</strong><br>
+        A neural network studies the heatmap and produces a compressed summary — not text yet, just a structured representation. Like a court stenographer writing phonetic shorthand: "breathy onset, strong mid-vowel, liquid consonant..." The summary captures <em>what the sound means</em> without committing to specific words.</p>
+        <p><strong>Stage 3 — A "decoder" writes the words</strong><br>
+        A small language model (similar architecture to ChatGPT, but specialized) receives the summary and generates text <strong>one word at a time</strong>. At each step, it looks back at the audio summary and at words it's already generated. Like a UN translator: listens to the speech (encoder), then translates word by word (decoder), constantly referencing what they heard and what they've already said.</p>
+      </div>
+
+      <div class="concept">
+        <h4>Where does this run?</h4>
+        <p>All three stages run on your Mac's <strong>Apple Neural Engine (ANE)</strong> — a dedicated chip on Apple Silicon designed for neural network math. <strong>CoreML</strong> is Apple's framework for loading models onto this chip. WhisperKit is the Swift wrapper that orchestrates the pipeline.</p>
+        <p>The 1-2 GB model file you downloaded is the <strong>trained knowledge</strong> (weights) of the encoder and decoder. "large-v3-turbo" means: large network (more accurate), version 3, optimized for speed.</p>
+      </div>
+
+      <div class="concept">
+        <h4>The 30-second chunking limit</h4>
+        <p>Whisper processes a maximum of <strong>30 seconds</strong> per input (baked into the model architecture). Longer recordings are split into chunks, each processed independently. The decoder for chunk 2 doesn't know what was said in chunk 1 — words at boundaries can split awkwardly, and context doesn't carry across.</p>
+        <p>This is another reason production apps like Wispr Flow stream audio to the cloud in real-time and use an additional LLM to stitch chunks together with context.</p>
+      </div>
+      `)}
+
+      <div class="diagram"><span class="hl">Inside WhisperKit</span>
+
+  <span class="c">[Float]</span> 8,000 numbers at 16kHz
+       │
+  <span class="o">Mel Spectrogram</span>  ← numbers → heatmap ("picture of sound")
+       │
+  <span class="p">Encoder</span>          ← heatmap → compressed summary vectors
+       │
+  <span class="g">Decoder</span>          ← summary → "Hello" (token by token)
+       │
+  <span class="hl">transcriber.currentText</span> = "Hello"</div>
+
+      ${d(`
+      <div class="step-desc">
+        Model loading happens at launch (Step 2). On first run, downloads ~1-2 GB from HuggingFace.
+        The model is cached at <code>~/Library/Application Support/Vox/models/</code>.
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span>Transcriber.swift</span><span class="lines">Lines 118-143 — Stop + transcribe</span></div>
+        <pre><span class="kw">func</span> <span class="fn">stopListening</span>() <span class="kw">async throws</span> {
+    <span class="kw">let</span> audioSamples = audioCapture.<span class="fn">stop</span>()
+    isListening = <span class="kw">false</span>
+
+    <span class="cmt">// Validation: 5 seconds should be ~80,000 samples</span>
+    <span class="kw">let</span> durationEstimate = <span class="ty">Double</span>(audioSamples.count) / <span class="num">16000.0</span>
+
+    <span class="kw">guard let</span> whisperKit = whisperKit, !audioSamples.<span class="prop">isEmpty</span> <span class="kw">else</span> { <span class="kw">return</span> }
+
+    <span class="cmt">// WhisperKit handles chunking internally if > 30 seconds</span>
+    <span class="kw">let</span> results = <span class="kw">try await</span> whisperKit.<span class="fn">transcribe</span>(audioArray: audioSamples)
+
+    currentText = results.<span class="fn">map</span> { $0.text }
+        .<span class="fn">joined</span>(separator: <span class="str">" "</span>)
+        .<span class="fn">trimmingCharacters</span>(in: .whitespacesAndNewlines)
+}</pre>
+      </div>
+
+      <div class="callout bug">
+        <div class="callout-title">What Went Wrong in v1</div>
+        <code>whisperKit.transcribe(audioArray:)</code> expects <strong>16kHz mono Float32</strong>. It does NOT
+        resample internally. Feeding 48kHz data = 3x speed = unintelligible gibberish. The sample count
+        validation logging was added to catch this: 5 seconds at 16kHz = ~80,000 samples.
+      </div>
+      `)}
+
+      <dl class="kv-grid">
+        <dt>Framework</dt><dd>WhisperKit 0.9.0+ (Swift-native)</dd>
+        <dt>Model</dt><dd>openai_whisper-large-v3_turbo (~1-2 GB)</dd>
+        <dt>Runs on</dt><dd>Apple Neural Engine via CoreML</dd>
+        <dt>Input</dt><dd>16kHz mono Float32 array</dd>
+        <dt>Max chunk</dt><dd>30 seconds (auto-split)</dd>
+        <dt>First load</dt><dd>30-120s (download + compile)</dd>
+        <dt>Cached load</dt><dd>~10-30s</dd>
+      </dl>
+    `
+  },
+  {
+    title: "Text Cleanup",
+    file: "TextProcessor.swift",
+    fileLines: "1-99",
+    pipelineLabel: "Clean",
+    content: () => `
+      ${c(`
+      <div class="concept">
+        <h4>The 95/5 split — where the "magic" lives</h4>
+        <p>Everything up to this point — capturing audio, resampling, running the AI model — is the <strong>95% of speech-to-text that's essentially a solved problem</strong>. Whisper, Deepgram, Google Speech, Apple Dictation all do this at 95%+ accuracy. It's a commodity.</p>
+        <p>The remaining <strong>5%</strong> is where product companies differentiate: filler word removal, punctuation that matches your intent, formatting for context (bullets in Notion, casual in Slack, formal in email), and learning your personal writing style over time.</p>
+        <p>Vox uses <strong>simple regex rules</strong> for this step — find patterns like "um", "uh", "you know" and delete them. It's instant (0ms), free, and local. But the output is noticeably less polished than a production tool.</p>
+        <p>For comparison: <a href="https://wisprflow.ai" style="color:var(--cyan)">Wispr Flow</a> (the product that inspired this project) sends transcriptions through a <strong>fine-tuned Llama LLM on AWS</strong> in under 200ms. It doesn't just remove fillers — it rewrites text to match your style, adds proper punctuation, and adjusts formality based on which app you're typing in. It even learns from your manual corrections over time. That rewriting layer is the "last 5%" that makes dictation feel magical.</p>
+        <p>Building Vox helped me understand exactly where that gap is — and why it's a genuine product moat, not just polish.</p>
+      </div>
+      `)}
+
+      <div class="diagram"><span class="hl">Text Cleanup Pipeline</span>
+
+  <span class="p">"Um so I was like you know thinking about uh the project"</span>
+       │
+  <span class="r">1. Remove fillers</span>   ← regex: um, uh, you know, like...
+  <span class="o">2. Collapse spaces</span>  ← "  " → " "
+  <span class="o">3. Fix punctuation</span>  ← ",," → ","
+  <span class="o">4. Trim</span>
+  <span class="g">5. Capitalize</span>
+       │
+  <span class="g">"So I was thinking about the project"</span></div>
+
+      ${d(`
+      <div class="code-block">
+        <div class="code-header"><span>TextProcessor.swift</span><span class="lines">Lines 30-50 — Filler patterns</span></div>
+        <pre><span class="kw">private static let</span> fillerPatterns: [(<span class="ty">String</span>, <span class="ty">String</span>)] = [
+    (<span class="str">#"\\b[Uu]mm?\\b"#</span>, <span class="str">""</span>),           <span class="cmt">// "um", "umm"</span>
+    (<span class="str">#"\\b[Uu]hh?\\b"#</span>, <span class="str">""</span>),           <span class="cmt">// "uh", "uhh"</span>
+    (<span class="str">#"\\b[Ee]rr?\\b"#</span>, <span class="str">""</span>),           <span class="cmt">// "er", "err"</span>
+    (<span class="str">#"\\b[Hh]mm+\\b"#</span>, <span class="str">""</span>),           <span class="cmt">// "hmm", "hmmm"</span>
+    (<span class="str">#"\\byou know\\b"#</span>, <span class="str">""</span>),
+    (<span class="str">#"\\bkind of\\b"#</span>, <span class="str">""</span>),
+    (<span class="str">#"\\bbasically\\b"#</span>, <span class="str">""</span>),
+    (<span class="str">#"\\bactually\\b"#</span>, <span class="str">""</span>),          <span class="cmt">// risky — sometimes meaningful</span>
+    (<span class="str">#",\\s*like\\s*,"#</span>, <span class="str">","</span>),          <span class="cmt">// ", like," → ","</span>
+]</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span>AppController.swift</span><span class="lines">Lines 274-276 — Where cleanup is called</span></div>
+        <pre><span class="kw">let</span> cleanedText = <span class="ty">TextProcessor</span>.<span class="fn">process</span>(rawText)</pre>
+      </div>
+      `)}
+
+      <dl class="kv-grid">
+        <dt>Approach</dt><dd>Regex-based (NSRegularExpression)</dd>
+        <dt>Latency</dt><dd>~0ms (instant)</dd>
+        <dt>Fillers removed</dt><dd>um, uh, er, hmm, you know, like, etc.</dd>
+        <dt>Limitation</dt><dd>No style rewriting or context-aware formatting</dd>
+        <dt>Production gap</dt><dd>LLM rewriting (Wispr Flow) adds punctuation, style, personalization</dd>
+      </dl>
+    `
+  },
+  {
+    title: "Text Insertion",
+    file: "TextInserter.swift",
+    fileLines: "1-339",
+    pipelineLabel: "Insert",
+    content: () => `
+      ${c(`
+      <div class="concept">
+        <h4>How does text appear at your cursor, in any app?</h4>
+        <p>This is the "invisible UX layer." You speak, and text appears where your cursor is — in Gmail, Slack, VS Code, anywhere. No copy-paste dialog, no window switching. The text just… appears.</p>
+        <p>The trick: <strong>programmatic clipboard paste</strong>. The app saves whatever's on your clipboard, writes the transcribed text to the clipboard, simulates Cmd+V (paste), waits a moment, then restores your original clipboard. You never notice.</p>
+      </div>
+
+      <div class="concept">
+        <h4>What are CGEvents? — Puppet strings for your keyboard</h4>
+        <p>When you physically press a key, macOS creates a <strong>CGEvent</strong> — a digital record: "the V key was pressed down." The foreground app receives it and responds.</p>
+        <p>The trick: <strong>you can create fake CGEvents in code</strong>. To the foreground app, they're indistinguishable from real keypresses. It's like attaching puppet strings to the keyboard and pulling them from backstage — the audience (foreground app) sees keys pressed and responds normally.</p>
+        <p>A real Cmd+V is <strong>four physical actions</strong>: Command DOWN, V DOWN, V UP, Command UP. We simulate all four. Skip any one and it breaks — the app types "v" instead of pasting, or thinks Command is stuck.</p>
+      </div>
+
+      <div class="concept">
+        <h4>Why can't this app be on the Mac App Store?</h4>
+        <p>The Mac App Store requires <strong>sandboxing</strong> — your app runs in a fenced-off area, like a child in a playground sandbox. It can play with its own toys but can't reach anything outside.</p>
+        <p>Vox needs three things sandboxing forbids:</p>
+        <p><strong>1. Synthetic keyboard input</strong> (CGEvents) — the sandbox says: "you can't pretend to be a keyboard, that's a keylogger risk."<br>
+        <strong>2. Controlling other apps</strong> (AppleScript fallback) — the sandbox says: "you can't automate other apps."<br>
+        <strong>3. Global hotkey capture</strong> (Carbon API) — the sandbox says: "you can't intercept keyboard input system-wide."</p>
+        <p>Every dictation app (Wispr Flow, VoiceInk, BetterDictation, Talon Voice) distributes <strong>outside the App Store</strong> for these same reasons. It's a fundamental architectural constraint of macOS, not a choice.</p>
+      </div>
+      `)}
+
+      <div class="diagram"><span class="hl">Text Insertion Pipeline</span>
+
+  1. <span class="o">Save clipboard</span>        ← preserve user's original clipboard
+  2. <span class="g">Write our text</span>         ← pasteboard.setString(text)
+  3. <span class="p">Wait 50ms</span>              ← clipboard server propagation
+  4. <span class="hl">Simulate Cmd+V</span>         ← 4 CGEvents posted to .cghidEventTap
+  5.   <span class="r">Fallback: AppleScript</span>  ← for apps that block synthetic events
+  6. <span class="p">Wait 100ms</span>             ← target app processing
+  7. <span class="o">Restore clipboard</span>      ← put back original contents</div>
+
+      ${d(`
+      <div class="code-block">
+        <div class="code-header"><span>TextInserter.swift</span><span class="lines">Lines 79-133 — Main insert flow</span></div>
+        <pre><span class="kw">@MainActor static func</span> <span class="fn">insert</span>(_ text: <span class="ty">String</span>) <span class="kw">async</span> -> <span class="ty">Bool</span> {
+    <span class="cmt">// Check Accessibility permission</span>
+    <span class="kw">guard</span> <span class="fn">AXIsProcessTrusted</span>() <span class="kw">else</span> {
+        <span class="fn">promptForAccessibility</span>()
+        <span class="kw">return false</span>
+    }
+
+    <span class="kw">let</span> savedContents = <span class="fn">savePasteboard</span>(pasteboard)
+    pasteboard.<span class="fn">setString</span>(text, forType: .string)
+
+    <span class="kw">try</span>? <span class="kw">await</span> <span class="ty">Task</span>.<span class="fn">sleep</span>(nanoseconds: <span class="num">50_000_000</span>) <span class="cmt">// 50ms</span>
+
+    <span class="kw">let</span> pasteSuccess = <span class="fn">simulatePaste</span>()
+    <span class="kw">if</span> !pasteSuccess { <span class="fn">appleScriptPaste</span>() }
+
+    <span class="kw">try</span>? <span class="kw">await</span> <span class="ty">Task</span>.<span class="fn">sleep</span>(nanoseconds: <span class="num">100_000_000</span>) <span class="cmt">// 100ms</span>
+
+    <span class="fn">restorePasteboard</span>(pasteboard, contents: savedContents)
+    <span class="kw">return true</span>
+}</pre>
+      </div>
+
+      <div class="step-desc">
+        The <code>simulatePaste()</code> method creates four CGEvents with a private event source
+        (isolated from real keyboard state) and posts them to <code>.cghidEventTap</code> (the Human Interface Device level).
+        It also handles non-QWERTY layouts by temporarily switching keyboard input sources.
+      </div>
+
+      <div class="callout bug">
+        <div class="callout-title">5 Bugs Fixed from v1</div>
+        1. Used <code>nil</code> event source instead of <code>.privateState</code> — phantom modifier keys<br>
+        2. Wrong tap point (<code>.cgAnnotatedSessionEventTap</code>) — events ignored by some apps<br>
+        3. Only 2 events instead of 4 — missing Command key down/up<br>
+        4. No QWERTY handling — keycode 0x09 maps to wrong char on Dvorak/AZERTY<br>
+        5. No AppleScript fallback — some Electron apps block synthetic CGEvents
+      </div>
+      `)}
+
+      ${c(`
+      <div class="callout insight">
+        <div class="callout-title">Why clipboard-paste instead of direct text insertion?</div>
+        You might think: "why not use the Accessibility API to set text directly in the focused field?"
+        Because many apps (Electron, custom renderers) don't implement that protocol. Clipboard + Cmd+V
+        works in <strong>every app</strong> because Cmd+V is universal. Every production dictation app uses this approach.
+      </div>
+      `)}
+
+      <dl class="kv-grid">
+        <dt>Primary method</dt><dd>CGEvent Cmd+V (4 events)</dd>
+        <dt>Fallback</dt><dd>AppleScript via System Events</dd>
+        <dt>Event source</dt><dd>.privateState (isolated)</dd>
+        <dt>Tap point</dt><dd>.cghidEventTap (HID level)</dd>
+        <dt>Delays</dt><dd>50ms write + 100ms paste</dd>
+        <dt>Sandboxed?</dt><dd>No — CGEvents blocked in sandbox</dd>
+        <dt>Permission</dt><dd>Accessibility (System Settings)</dd>
+      </dl>
+    `
+  },
+  {
+    title: "The State Machine",
+    file: "AppController.swift",
+    fileLines: "45-298",
+    pipelineLabel: "States",
+    content: () => `
+      ${c(`
+      <div class="concept">
+        <h4>The conductor that keeps everything in order</h4>
+        <p>Every component you've seen (hotkey, audio, transcription, cleanup, insertion) needs to happen in the right order, and the app needs to handle things going wrong. That's what the state machine does — it's the conductor of the orchestra.</p>
+        <p>At any moment, Vox is in exactly one of six states. The state determines what the hotkey does, what icon the menu bar shows, and which transitions are allowed. You can't start listening if the model isn't loaded. You can't transcribe if you're not recording. The state machine enforces these rules.</p>
+      </div>
+      `)}
+
+      <div class="diagram"><span class="hl">Vox State Machine</span>
+
+  <span class="o">LOADING</span> ─── model ready ───> <span class="g">IDLE</span>
+     │                            │
+  model fails                ⌥Space pressed
+     │                            │
+     ▼                            ▼
+  <span class="r">ERROR</span> <──── start fails ── <span class="r">LISTENING</span>
+     │                            │
+  ⌥Space (retry)            ⌥Space pressed
+     │                            │
+     └──> <span class="o">LOADING</span>             <span class="o">PROCESSING</span>
+           or                     │
+          <span class="g">IDLE</span>               transcribe done
+                                  │
+                                  ▼
+                              <span class="p">INSERTING</span>
+                                  │
+                              paste done
+                                  │
+                                  ▼
+                               <span class="g">IDLE</span> ← ready for next dictation</div>
+
+      ${d(`
+      <div class="code-block">
+        <div class="code-header"><span>AppController.swift</span><span class="lines">Lines 45-52 — State enum</span></div>
+        <pre><span class="kw">enum</span> <span class="ty">VoxState</span>: <span class="ty">String</span> {
+    <span class="kw">case</span> loading    = <span class="str">"Loading model..."</span>
+    <span class="kw">case</span> idle       = <span class="str">"Ready"</span>
+    <span class="kw">case</span> listening  = <span class="str">"Listening..."</span>
+    <span class="kw">case</span> processing = <span class="str">"Processing..."</span>
+    <span class="kw">case</span> inserting  = <span class="str">"Inserting..."</span>
+    <span class="kw">case</span> error      = <span class="str">"Error"</span>
+}</pre>
+      </div>
+
+      <div class="step-desc">
+        <strong>Error recovery:</strong> In v1, the error state was a dead end. Now pressing the hotkey in error state attempts recovery:
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span>AppController.swift</span><span class="lines">Lines 188-201 — Error recovery</span></div>
+        <pre><span class="kw">if</span> state == .error {
+    <span class="kw">if</span> transcriber.<span class="prop">isModelLoaded</span> {
+        state = .idle        <span class="cmt">// Model loaded — reset and continue</span>
+        errorMessage = <span class="kw">nil</span>
+    } <span class="kw">else</span> {
+        <span class="kw">await</span> <span class="fn">loadModel</span>()  <span class="cmt">// Model missing — retry download</span>
+        <span class="kw">return</span>
+    }
+}</pre>
+      </div>
+
+      <div class="step-desc">
+        The full <code>stopDictation()</code> chains every step with state transitions:
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span>AppController.swift</span><span class="lines">Lines 252-298 — Full pipeline</span></div>
+        <pre><span class="kw">private func</span> <span class="fn">stopDictation</span>() <span class="kw">async</span> {
+    state = .processing
+    <span class="kw">try await</span> transcriber.<span class="fn">stopListening</span>()       <span class="cmt">// 1. Stop + transcribe</span>
+    <span class="kw">let</span> rawText = transcriber.<span class="fn">getFinalText</span>()    <span class="cmt">// 2. Get raw text</span>
+
+    <span class="kw">guard</span> !rawText.<span class="prop">isEmpty</span> <span class="kw">else</span> {
+        state = .idle; <span class="kw">return</span>                 <span class="cmt">// Empty → skip</span>
+    }
+
+    <span class="kw">let</span> cleaned = <span class="ty">TextProcessor</span>.<span class="fn">process</span>(rawText)  <span class="cmt">// 3. Clean fillers</span>
+
+    state = .inserting
+    <span class="kw">await</span> <span class="ty">TextInserter</span>.<span class="fn">insert</span>(cleaned)           <span class="cmt">// 4. Paste into app</span>
+
+    state = .idle                              <span class="cmt">// 5. Done → ready again</span>
+    currentText = cleaned
+    hotkeyManager.<span class="fn">reset</span>()
+}</pre>
+      </div>
+      `)}
+
+      ${c(`
+      <div class="callout insight">
+        <div class="callout-title">The Complete Journey</div>
+        From the user's perspective: press one key, speak, press it again, text appears. Under the hood, that single interaction traverses <strong>6 state transitions</strong>, <strong>8 source files</strong>,
+        <strong>3 system permissions</strong>, and <strong>2 fallback paths</strong>. The entire pipeline — from hotkey to text appearing — typically completes in 1-3 seconds (dominated by WhisperKit inference).
+      </div>
+      `)}
+
+      <div class="diagram"><span class="hl">Complete Data Flow — End to End</span>
+
+  <span class="p">⌥Space</span> → <span class="hl">HotkeyManager</span> → onToggle(true) → startDictation()
+       │
+  <span class="g">AudioCapture</span>.start() → mic on → tap callback (real-time thread)
+       │
+  <span class="p">User speaks for N seconds</span>
+       │
+  <span class="p">⌥Space</span> → <span class="hl">HotkeyManager</span> → onToggle(false) → stopDictation()
+       │
+  <span class="g">AudioCapture</span>.stop() → [Float] (16kHz mono)
+       │
+  <span class="o">WhisperKit</span> → spectrogram → encoder → decoder → raw text
+       │
+  <span class="o">TextProcessor</span> → remove fillers → clean text
+       │
+  <span class="r">TextInserter</span> → save clipboard → write text → Cmd+V → restore
+       │
+  <span class="g">Text appears at cursor ✓</span></div>
+    `
+  }
+];
+
+// ── Render ──
+function renderNav() {
+  document.getElementById('navList').innerHTML = steps.map((s, i) => `
+    <div class="nav-item ${i === currentStep ? 'active' : ''} ${visited.has(i) && i !== currentStep ? 'visited' : ''}" onclick="goToStep(${i})">
+      <div class="nav-num">${visited.has(i) && i !== currentStep ? '&#10003;' : i + 1}</div>
+      <div class="nav-label">
+        <div class="title">${s.title}</div>
+        <div class="file">${s.file}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPipeline() {
+  document.getElementById('pipelineBar').innerHTML = steps.map((s, i) => {
+    const cls = i === currentStep ? 'active' : visited.has(i) ? 'visited' : 'idle';
+    const aCls = i < currentStep ? 'visited' : i === currentStep ? 'active' : '';
+    return `<div class="pipeline-step" onclick="goToStep(${i})"><div class="pipeline-node ${cls}">${s.pipelineLabel}</div></div>${i < steps.length - 1 ? `<span class="pipeline-arrow ${aCls}">&rarr;</span>` : ''}`;
+  }).join('');
+}
+
+function renderContent() {
+  const s = steps[currentStep];
+  document.getElementById('content').innerHTML = `
+    <div class="step-content">
+      <div class="step-badge"><span class="snum">${currentStep + 1}</span> Step ${currentStep + 1} of ${steps.length}</div>
+      <h2 class="step-title">${s.title}</h2>
+      <span class="step-file">${s.file} — Lines ${s.fileLines}</span>
+      ${s.content()}
+      ${currentStep < steps.length - 1 ? `<div class="next-step" onclick="nextStep()">Continue to Step ${currentStep + 2}: ${steps[currentStep + 1].title} &rarr;</div>` : `<div class="next-step" onclick="goToStep(0)" style="border-color:var(--green);color:var(--green);background:rgba(63,185,80,0.1)">&#10003; Walkthrough complete — Start over</div>`}
+    </div>
+  `;
+  document.getElementById('content').scrollTop = 0;
+}
+
+function updateButtons() {
+  document.getElementById('prevBtn').disabled = currentStep === 0;
+  document.getElementById('nextBtn').disabled = currentStep === steps.length - 1;
+}
+
+function goToStep(i) { currentStep = i; visited.add(i); renderNav(); renderPipeline(); renderContent(); updateButtons(); }
+function nextStep() { if (currentStep < steps.length - 1) goToStep(currentStep + 1); }
+function prevStep() { if (currentStep > 0) goToStep(currentStep - 1); }
+
+function setMode(mode) {
+  viewMode = mode;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('toggle' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+  renderContent();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextStep(); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevStep(); }
+  if (e.key >= '1' && e.key <= '8') { e.preventDefault(); goToStep(parseInt(e.key) - 1); }
+});
+
+goToStep(0);
+</script>
+</body>
+</html>
