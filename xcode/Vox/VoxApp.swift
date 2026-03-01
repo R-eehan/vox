@@ -1,39 +1,38 @@
-// app/Sources/Vox/VoxApp.swift
+// VoxApp.swift — Entry point for the macOS menu bar STT app
 // ============================================================
-// Vox — Entry point for the macOS menu bar STT app.
 //
-// This wires the AppController (which orchestrates the pipeline)
-// to the SwiftUI menu bar UI. The UI shows:
-//   - Current state (loading, idle, listening, processing)
-//   - Live transcription text
-//   - Error messages
-//   - Quit button
+// This wires the AppController to the SwiftUI menu bar UI.
 //
-// The menu bar icon changes based on state:
-//   🎙 mic.fill (idle) → 🔴 record.circle (listening) →
-//   ⏳ ellipsis.circle (processing)
+// WHAT WENT WRONG IN v1:
+// The `.onAppear` modifier triggered `controller.setup()`, but
+// `.onAppear` only fires when the MenuBarExtra PANEL opens (user
+// clicks the icon). So the model didn't start loading until the
+// user clicked the menu bar icon — pressing the hotkey before
+// that did nothing.
+//
+// THE FIX (v2):
+// Initialization happens in AppController.init(), which runs
+// immediately when `@StateObject` creates the controller at app
+// launch. No `.onAppear` needed. The model starts loading the
+// moment the app starts, not when the user first interacts.
 // ============================================================
 
 import SwiftUI
 
-// @main marks this struct as the app's entry point.
-// In SwiftUI, the App protocol replaces the old AppDelegate pattern.
 @main
 struct VoxApp: App {
 
     // @StateObject creates the controller once and keeps it alive
-    // for the lifetime of the app. It's the SwiftUI equivalent of
-    // a singleton — but with automatic lifecycle management.
+    // for the lifetime of the app. AppController.init() starts
+    // model loading and hotkey registration immediately.
     @StateObject private var controller = AppController()
 
     var body: some Scene {
         MenuBarExtra {
-            // --- Menu Bar Panel Content ---
             VStack(alignment: .leading, spacing: 12) {
 
                 // Status header
                 HStack {
-                    // State-dependent icon
                     Image(systemName: iconForState(controller.state))
                         .foregroundColor(colorForState(controller.state))
                     Text(controller.state.rawValue)
@@ -59,12 +58,11 @@ struct VoxApp: App {
                 Divider()
 
                 // Hotkey hint
-                Text("⌘⇧V to start/stop dictation")
+                Text("⌥Space to start/stop dictation")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                // Quit button — essential for menu bar apps since there's
-                // no window close button or Dock icon to right-click.
+                // Quit button
                 Button("Quit Vox") {
                     controller.teardown()
                     NSApplication.shared.terminate(nil)
@@ -73,16 +71,8 @@ struct VoxApp: App {
             }
             .padding()
             .frame(width: 300)
-            .onAppear {
-                // Initialize the controller when the menu bar panel
-                // first appears. This triggers model download + load
-                // and registers the global hotkey.
-                controller.setup()
-            }
+            // NOTE: No .onAppear { controller.setup() } — init handles it
         } label: {
-            // --- Menu Bar Icon ---
-            // This is what appears in the macOS menu bar.
-            // We change the icon based on the current state.
             Image(systemName: iconForState(controller.state))
         }
         .menuBarExtraStyle(.window)
@@ -90,7 +80,6 @@ struct VoxApp: App {
 
     // MARK: - UI Helpers
 
-    /// Map app state to an SF Symbols icon name
     private func iconForState(_ state: VoxState) -> String {
         switch state {
         case .loading: return "arrow.down.circle"
@@ -102,7 +91,6 @@ struct VoxApp: App {
         }
     }
 
-    /// Map app state to a color for the icon
     private func colorForState(_ state: VoxState) -> Color {
         switch state {
         case .loading: return .orange

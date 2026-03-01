@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- CFBundleIdentifier: THE critical key for TCC (Transparency, Consent, Control).
+         macOS uses this to match permission grants to apps. In v1, SPM builds had no
+         stable CFBundleIdentifier — the auto-generated code signing identity changed
+         every rebuild, so Accessibility permissions never persisted.
+         $(PRODUCT_BUNDLE_IDENTIFIER) is replaced at build time with the value from
+         Xcode build settings (com.reehan.vox). -->
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
+    <!-- Standard bundle keys required for a proper .app bundle -->
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundleDisplayName</key>
+    <string>Vox</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>2.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <!-- LSUIElement: Hides the app from the Dock and Cmd+Tab switcher.
+         Standard for menu-bar-only apps (Bartender, Wispr Flow, VoiceInk).
+         The app is only accessible via its menu bar icon. -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- NSMicrophoneUsageDescription: macOS requires this key to show the
+         microphone permission dialog. Without it, the app crashes on first
+         attempt to access the mic. The string is shown to the user. -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Vox needs microphone access to transcribe your speech into text.</string>
+</dict>
+</plist>

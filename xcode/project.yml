@@ -1,0 +1,42 @@
+name: Vox
+options:
+  bundleIdPrefix: com.reehan
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+
+packages:
+  HotKey:
+    url: https://github.com/soffes/HotKey.git
+    from: "0.2.0"
+  WhisperKit:
+    url: https://github.com/argmaxinc/WhisperKit.git
+    from: "0.9.0"
+
+targets:
+  Vox:
+    type: application
+    platform: macOS
+    sources:
+      - path: Vox
+        type: group
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.reehan.vox
+        INFOPLIST_FILE: Vox/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Vox/Vox.entitlements
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+        ENABLE_APP_SANDBOX: false
+    dependencies:
+      - package: HotKey
+      - package: WhisperKit
+    entitlements:
+      path: Vox/Vox.entitlements
