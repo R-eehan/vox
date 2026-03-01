@@ -1,26 +1,28 @@
 # Vox
 
-**A native macOS speech-to-text menu bar app — built to understand what makes great dictation software great.**
+**A native macOS speech-to-text menu bar app, built to understand what makes great dictation software great.**
 
 Vox captures your speech, transcribes it locally using WhisperKit (OpenAI's Whisper on Apple Silicon), cleans up filler words, and inserts the text wherever your cursor is. No cloud. No subscription. No data leaves your machine.
 
-This is a learning project. The goal isn't to compete with Wispr Flow — it's to rebuild one from scratch and understand which parts are model capabilities and which are product engineering.
+I built this as a learning project. I wanted to rebuild a dictation app from scratch and understand which parts are model capabilities and which are product engineering.
 
-**[Interactive STT Pipeline Visualizer](https://r-eehan.github.io/vox/visualizer/index.html)** — a visual explainer of how speech-to-text works under the hood, from microphone input to text insertion.
+<video src="Vox-demo.mov" width="600" autoplay loop muted playsinline></video>
 
-**[Code Walkthrough](https://r-eehan.github.io/vox/vox-walkthrough.html)** — annotated walkthrough of Vox's source code and architecture decisions.
+**[Interactive STT pipeline visualizer](https://r-eehan.github.io/vox/visualizer/index.html)**: A visual explainer of how speech-to-text works under the hood, from microphone input to text insertion.
+
+**[Code walkthrough](https://r-eehan.github.io/vox/vox-walkthrough.html)**: Annotated walkthrough of Vox's source code and architecture decisions. We recommend having the code open side by side for better understanding.
 
 ## Requirements
 
-- **Apple Silicon Mac** (M1/M2/M3/M4) — WhisperKit uses the Apple Neural Engine, Intel Macs are not supported
+- **Apple Silicon Mac** (M1/M2/M3/M4). WhisperKit uses the Apple Neural Engine. Intel Macs are not supported.
 - **macOS 14.0 Sonoma** or later
-- **Xcode 16.0+** (full app from the Mac App Store, not just Command Line Tools) — needed for CoreML model compilation and dependency resolution
-- **[XcodeGen](https://github.com/yonaskolb/XcodeGen)** — generates the Xcode project from `project.yml`
+- **Xcode 16.0+** (full app from the Mac App Store, not just Command Line Tools). Needed for CoreML model compilation and dependency resolution.
+- **[XcodeGen](https://github.com/yonaskolb/XcodeGen)** to generate the Xcode project from `project.yml`
 - ~2 GB disk space for the WhisperKit model (downloaded automatically on first launch)
 
 No Apple Developer account is needed. The app is signed ad-hoc ("Sign to Run Locally"), which Xcode does automatically when you build.
 
-## Build & Run
+## Build and run
 
 ```bash
 # Clone the repo
@@ -51,19 +53,19 @@ On first launch, WhisperKit downloads the `large-v3-turbo` model (~1-2 GB). You'
 
 Vox needs two macOS permissions:
 
-- **Microphone** — prompted automatically on first launch
-- **Accessibility** — required for pasting text into other apps. Go to System Settings > Privacy & Security > Accessibility and add Vox
+- **Microphone**: Prompted automatically on first launch
+- **Accessibility**: Required for pasting text into other apps. Go to System Settings > Privacy & Security > Accessibility and add Vox
 
-**Note:** Because the app uses ad-hoc signing, macOS may ask you to re-grant these permissions after you rebuild. This is a known macOS behavior with unsigned/ad-hoc apps — TCC (the permission system) tracks grants by code signature, which changes on each build.
+Because the app uses ad-hoc signing, macOS may ask you to re-grant permissions after each rebuild. This is expected. TCC (the permission system) tracks grants by code signature, which changes on every build.
 
 ## Usage
 
 1. Look for the Vox icon in the macOS menu bar
 2. Press **Option+Space** to start dictation
 3. Speak naturally
-4. Press **Option+Space** again to stop — your text appears where your cursor is
+4. Press **Option+Space** again to stop. Your text appears where your cursor is.
 
-## How It Works
+## How it works
 
 ```
 [Hotkey] → [Audio Capture] → [Resample] → [Model Inference] → [Text Cleanup] → [Text Insertion]
@@ -72,7 +74,7 @@ Vox needs two macOS permissions:
                               interpolation
 ```
 
-Audio is captured at the hardware sample rate (typically 48kHz) and resampled to 16kHz using linear interpolation (adapted from [VoiceInk](https://github.com/Beingpax/VoiceInk)'s approach) before being fed to WhisperKit.
+Audio is captured at the hardware sample rate (typically 48kHz) and resampled to 16kHz using linear interpolation before being fed to WhisperKit. The resampling approach was adapted from [VoiceInk](https://github.com/Beingpax/VoiceInk).
 
 See [docs/architecture.md](docs/architecture.md) for the detailed breakdown.
 
@@ -93,19 +95,9 @@ All source files live in `xcode/Vox/`:
 
 The Xcode project is generated from `project.yml` using XcodeGen.
 
-## What I Learned
-
-**Model engineering vs. product engineering:** The STT model gets you 90% of the way. The last 10% — the part that makes Wispr Flow feel magical — is product engineering:
-
-- **Filler word removal**: We use regex. Wispr Flow uses a fine-tuned LLM that understands context ("I mean" as filler vs. meaningful).
-- **Text formatting**: We output raw text. Wispr Flow formats based on which app you're typing in (Slack vs. email vs. code editor).
-- **Writing style**: We don't touch style. Wispr Flow adapts to your personal writing voice.
-
-The gap between "technically working" and "delightful product" is enormous — and it's almost entirely product engineering, not model improvement.
-
 ## Distribution
 
-Currently Vox is build-from-source only. You cannot share the built `.app` with others — ad-hoc signing only works on the machine that built it. macOS Gatekeeper will block ad-hoc signed apps transferred to another Mac.
+Vox is build-from-source only. You cannot share the built `.app` with others because ad-hoc signing only works on the machine that built it. macOS Gatekeeper blocks ad-hoc signed apps transferred to another Mac.
 
 For distributable builds, you'd need an Apple Developer account ($99/yr) for Developer ID signing and notarization.
 
@@ -115,8 +107,8 @@ MIT
 
 ## Acknowledgments
 
-Vox was inspired by and adapted from [VoiceInk](https://github.com/Beingpax/VoiceInk) by Beingpax. VoiceInk is a fully-featured macOS dictation app, and studying its implementation was essential to understanding how audio capture, resampling, and text insertion actually work in practice. Vox doesn't replicate VoiceInk. It's a learning project where I used VoiceInk's codebase as a reference to figure out patterns like linear interpolation resampling, CGEvent-based text insertion, and thread-safe audio buffering.
+Vox was inspired by and adapted from [VoiceInk](https://github.com/Beingpax/VoiceInk) by Beingpax. VoiceInk is a fully-featured macOS dictation app, and studying its implementation was how I figured out how audio capture, resampling, and text insertion actually work in practice. Vox doesn't replicate VoiceInk. I used VoiceInk's codebase as a reference to understand patterns like linear interpolation resampling, CGEvent-based text insertion, and thread-safe audio buffering.
 
-- [WhisperKit](https://github.com/argmaxinc/WhisperKit) by Argmax — Swift-native Whisper for Apple Silicon
-- [HotKey](https://github.com/soffes/HotKey) by Sam Soffes — Global hotkey library
-- [Wispr Flow](https://www.wispr.com/) — The product that inspired this project
+- [WhisperKit](https://github.com/argmaxinc/WhisperKit) by Argmax: Swift-native Whisper for Apple Silicon
+- [HotKey](https://github.com/soffes/HotKey) by Sam Soffes: Global hotkey library
+- [Wispr Flow](https://www.wispr.com/): The product that inspired this project
