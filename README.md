@@ -6,6 +6,10 @@ Vox captures your speech, transcribes it locally using WhisperKit (OpenAI's Whis
 
 This is a learning project. The goal isn't to compete with Wispr Flow — it's to rebuild one from scratch and understand which parts are model capabilities and which are product engineering.
 
+**[Interactive STT Pipeline Visualizer](https://r-eehan.github.io/vox/visualizer/index.html)** — a visual explainer of how speech-to-text works under the hood, from microphone input to text insertion.
+
+**[Code Walkthrough](https://r-eehan.github.io/vox/vox-walkthrough.html)** — annotated walkthrough of Vox's source code and architecture decisions.
+
 ## Requirements
 
 - **Apple Silicon Mac** (M1/M2/M3/M4) — WhisperKit uses the Apple Neural Engine, Intel Macs are not supported
@@ -20,7 +24,7 @@ No Apple Developer account is needed. The app is signed ad-hoc ("Sign to Run Loc
 
 ```bash
 # Clone the repo
-git clone https://github.com/reehan/vox.git
+git clone https://github.com/R-eehan/vox.git
 cd vox/xcode
 
 # Install xcodegen (if you don't have it)
@@ -87,7 +91,7 @@ All source files live in `xcode/Vox/`:
 | `HotkeyManager.swift` | Global hotkey registration |
 | `ModelManager.swift` | Model path management |
 
-The Xcode project is generated from `project.yml` using XcodeGen. The `.xcodeproj` is not checked into git.
+The Xcode project is generated from `project.yml` using XcodeGen.
 
 ## What I Learned
 
@@ -111,7 +115,8 @@ MIT
 
 ## Acknowledgments
 
+Vox was inspired by and adapted from [VoiceInk](https://github.com/Beingpax/VoiceInk) by Beingpax. VoiceInk is a fully-featured macOS dictation app, and studying its implementation was essential to understanding how audio capture, resampling, and text insertion actually work in practice. Vox doesn't replicate VoiceInk. It's a learning project where I used VoiceInk's codebase as a reference to figure out patterns like linear interpolation resampling, CGEvent-based text insertion, and thread-safe audio buffering.
+
 - [WhisperKit](https://github.com/argmaxinc/WhisperKit) by Argmax — Swift-native Whisper for Apple Silicon
-- [VoiceInk](https://github.com/Beingpax/VoiceInk) by Beingpax — Audio resampling approach
 - [HotKey](https://github.com/soffes/HotKey) by Sam Soffes — Global hotkey library
 - [Wispr Flow](https://www.wispr.com/) — The product that inspired this project
