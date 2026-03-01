@@ -6,7 +6,7 @@ Vox captures your speech, transcribes it locally using WhisperKit (OpenAI's Whis
 
 I built this as a learning project. I wanted to rebuild a dictation app from scratch and understand which parts are model capabilities and which are product engineering.
 
-<video src="Vox-demo.mov" width="600" autoplay loop muted playsinline></video>
+<video src="https://github.com/R-eehan/vox/raw/main/Vox-demo.mov" width="600" autoplay loop muted playsinline></video>
 
 **[Interactive STT pipeline visualizer](https://r-eehan.github.io/vox/visualizer/index.html)**: A visual explainer of how speech-to-text works under the hood, from microphone input to text insertion.
 
